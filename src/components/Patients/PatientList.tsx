@@ -9,12 +9,14 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
-import { supabase } from "../../lib/supabase"; // Update this path based on your setup
+import { supabase } from "../../lib/supabase";
 import { Patient } from "../../types";
 import PatientForm from "./PatientForm";
 import Button from "../UI/Button";
+import { useNavigate } from "react-router-dom";
 
 const PatientList: React.FC = () => {
+  const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -268,7 +270,8 @@ const PatientList: React.FC = () => {
                             <div className="py-1">
                               <button
                                 onClick={() => {
-                                  /* Future: view patient details */
+                                  setSelectedPatient(null);
+                                  navigate(`/patients/${patient.id}`);
                                 }}
                                 className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                               >

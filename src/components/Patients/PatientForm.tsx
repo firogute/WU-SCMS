@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Save, User, Mail, Phone, Heart, AlertTriangle } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { Patient } from "../../types";
@@ -22,23 +22,46 @@ const PatientForm: React.FC<PatientFormProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<Patient>>({
-    firstName: patient?.firstName || "",
-    lastName: patient?.lastName || "",
-    email: patient?.email || "",
-    phone: patient?.phone || "",
-    dateOfBirth: patient?.dateOfBirth || "",
-    gender: patient?.gender || "male",
-    address: patient?.address || "",
-    emergencyContact: patient?.emergencyContact || "",
-    bloodType: patient?.bloodType || "",
-    allergies: patient?.allergies || [],
-    medicalHistory: patient?.medicalHistory || [],
-    status: patient?.status || "active",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    dateOfBirth: "",
+    gender: "male",
+    address: "",
+    emergencyContact: "",
+    bloodType: "",
+    allergies: [],
+    medicalHistory: [],
+    status: "active",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [newAllergy, setNewAllergy] = useState("");
   const [newMedicalHistory, setNewMedicalHistory] = useState("");
+
+  // Sync form data when `patient` prop changes (for editing)
+  useEffect(() => {
+    setFormData({
+      firstName: patient?.first_name || "",
+      lastName: patient?.last_name || "",
+      email: patient?.email || "",
+      phone: patient?.phone || "",
+      dateOfBirth: patient?.date_of_birth || "",
+      gender: patient?.gender || "male",
+      address: patient?.address || "",
+      emergencyContact: patient?.emergency_contact || "",
+      bloodType: patient?.blood_type || "",
+      allergies: patient?.allergies || [],
+      medicalHistory: patient?.medical_history || [],
+      status: patient?.status || "active",
+    });
+    setErrors({});
+    setGeneralError(null);
+    setSuccessMessage(null);
+    setNewAllergy("");
+    setNewMedicalHistory("");
+  }, [patient]);
 
   if (!isOpen) return null;
 
@@ -90,7 +113,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
 
     try {
       if (patient?.id) {
-        // 🔁 UPDATE
+        // UPDATE existing
         const { data, error } = await supabase
           .from("patients")
           .update(mappedData)
@@ -106,7 +129,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
         onSave({ ...data });
         setSuccessMessage("Patient updated successfully.");
       } else {
-        // ➕ INSERT
+        // INSERT new
         const { data, error } = await supabase
           .from("patients")
           .insert([{ ...mappedData, created_at: new Date().toISOString() }])
@@ -510,6 +533,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
               </Button>
             </div>
           </form>
+
           {generalError && (
             <div className="mt-4 text-sm text-red-600 bg-red-100 p-2 rounded">
               {generalError}

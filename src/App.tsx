@@ -15,6 +15,7 @@ import PharmacyInventory from "./components/Pharmacy/PharmacyInventory";
 import ConsultationList from "./components/Consultations/ConsultationList";
 import ReportsModule from "./components/Reports/ReportsModule";
 import PatientDetail from "./components/Patients/PatientDetail";
+import ProfileSettings from "./components/Settings/ProfileSettings";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -79,6 +80,7 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route path="" element={<Navigate to="/dashboard" replace />} />
+        <Route path="settings/:id" element={<ProfileSettings />} />
       </Route>
     </Routes>
   );

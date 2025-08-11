@@ -1,24 +1,17 @@
-import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import LoginForm from "./components/Auth/LoginForm";
-import Layout from "./components/Layout/Layout";
-import Dashboard from "./components/Dashboard/Dashboard";
-import PatientList from "./components/Patients/PatientList";
-import AppointmentCalendar from "./components/Appointments/AppointmentCalendar";
-import PharmacyInventory from "./components/Pharmacy/PharmacyInventory";
-import ConsultationList from "./components/Consultations/ConsultationList";
-import ReportsModule from "./components/Reports/ReportsModule";
-import PatientDetail from "./components/Patients/PatientDetail";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginForm from './components/Auth/LoginForm';
+import Layout from './components/Layout/Layout';
+import Dashboard from './components/Dashboard/Dashboard';
+import PatientList from './components/Patients/PatientList';
+import AppointmentCalendar from './components/Appointments/AppointmentCalendar';
+import PharmacyInventory from './components/Pharmacy/PharmacyInventory';
+import ConsultationList from './components/Consultations/ConsultationList';
+import ReportsModule from './components/Reports/ReportsModule';
+import StaffList from './components/Staff/StaffList';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -49,35 +42,13 @@ const AppRoutes: React.FC = () => {
       >
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="patients" element={<PatientList />} />
-        <Route path="patients/:patientId" element={<PatientDetail />} />
         <Route path="appointments" element={<AppointmentCalendar />} />
         <Route path="consultations" element={<ConsultationList />} />
         <Route path="pharmacy" element={<PharmacyInventory />} />
         <Route path="reports" element={<ReportsModule />} />
-        <Route
-          path="staff"
-          element={
-            <div className="text-center py-12 text-gray-500">
-              Staff management coming soon...
-            </div>
-          }
-        />
-        <Route
-          path="vitals"
-          element={
-            <div className="text-center py-12 text-gray-500">
-              Vitals module coming soon...
-            </div>
-          }
-        />
-        <Route
-          path="settings"
-          element={
-            <div className="text-center py-12 text-gray-500">
-              Settings coming soon...
-            </div>
-          }
-        />
+        <Route path="staff" element={<StaffList />} />
+        <Route path="vitals" element={<div className="text-center py-12 text-gray-500">Vitals module coming soon...</div>} />
+        <Route path="settings" element={<div className="text-center py-12 text-gray-500">Settings coming soon...</div>} />
         <Route path="" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>

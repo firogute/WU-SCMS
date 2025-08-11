@@ -84,3 +84,24 @@ export interface Notification {
   createdAt: string;
   userId?: string;
 }
+
+export interface Staff {
+  id: string;
+  fullName: string;
+  role: 'admin' | 'doctor' | 'nurse' | 'pharmacist' | 'receptionist';
+  department: string;
+  email: string;
+  phone: string;
+  gender: 'male' | 'female' | 'other';
+  employeeId: string;
+  joinDate: string;
+  username: string;
+  shift: 'morning' | 'evening' | 'night' | 'full-time';
+  status: 'active' | 'inactive' | 'on-leave';
+  accessRole: 'admin' | 'doctor' | 'nurse' | 'pharmacist' | 'receptionist';
+  profilePicture?: string;
+  address?: string;
+  emergencyContact?: string;
+  qualifications?: string[];
+  specialization?: string;
+}

@@ -1,15 +1,23 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import LoginForm from './components/Auth/LoginForm';
-import Layout from './components/Layout/Layout';
-import Dashboard from './components/Dashboard/Dashboard';
-import PatientList from './components/Patients/PatientList';
-import AppointmentCalendar from './components/Appointments/AppointmentCalendar';
-import PharmacyInventory from './components/Pharmacy/PharmacyInventory';
-import ConsultationList from './components/Consultations/ConsultationList';
-import ReportsModule from './components/Reports/ReportsModule';
-import StaffList from './components/Staff/StaffList';
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import LoginForm from "./components/Auth/LoginForm";
+import Layout from "./components/Layout/Layout";
+import Dashboard from "./components/Dashboard/Dashboard";
+import PatientList from "./components/Patients/PatientList";
+import AppointmentCalendar from "./components/Appointments/AppointmentCalendar";
+import PharmacyInventory from "./components/Pharmacy/PharmacyInventory";
+import ConsultationList from "./components/Consultations/ConsultationList";
+import ReportsModule from "./components/Reports/ReportsModule";
+import StaffList from "./components/Staff/StaffList";
+import PatientDetail from "./components/Patients/PatientDetail";
+import ProfileSettings from "./components/Settings/ProfileSettings";
+
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
@@ -50,6 +58,7 @@ const AppRoutes: React.FC = () => {
         <Route path="vitals" element={<div className="text-center py-12 text-gray-500">Vitals module coming soon...</div>} />
         <Route path="settings" element={<div className="text-center py-12 text-gray-500">Settings coming soon...</div>} />
         <Route path="" element={<Navigate to="/dashboard" replace />} />
+        <Route path="settings/:id" element={<ProfileSettings />} />
       </Route>
     </Routes>
   );

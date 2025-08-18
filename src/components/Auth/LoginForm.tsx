@@ -87,8 +87,8 @@ const LoginForm: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-              <Stethoscope className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 rounded-lg flex items-center justify-center shadow-lg">
+              <img src="logo.png" alt="" className="text-white" />
             </div>
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">

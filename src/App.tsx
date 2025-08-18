@@ -18,8 +18,9 @@ import StaffList from "./components/Staff/StaffList";
 import PatientDetail from "./components/Patients/PatientDetail";
 import ProfileSettings from "./components/Settings/ProfileSettings";
 
-
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -50,13 +51,29 @@ const AppRoutes: React.FC = () => {
       >
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="patients" element={<PatientList />} />
+        <Route path="patients" element={<PatientList />} />
+        <Route path="patients/:patientId" element={<PatientDetail />} />
         <Route path="appointments" element={<AppointmentCalendar />} />
         <Route path="consultations" element={<ConsultationList />} />
         <Route path="pharmacy" element={<PharmacyInventory />} />
         <Route path="reports" element={<ReportsModule />} />
         <Route path="staff" element={<StaffList />} />
-        <Route path="vitals" element={<div className="text-center py-12 text-gray-500">Vitals module coming soon...</div>} />
-        <Route path="settings" element={<div className="text-center py-12 text-gray-500">Settings coming soon...</div>} />
+        <Route
+          path="vitals"
+          element={
+            <div className="text-center py-12 text-gray-500">
+              Vitals module coming soon...
+            </div>
+          }
+        />
+        <Route
+          path="settings"
+          element={
+            <div className="text-center py-12 text-gray-500">
+              Settings coming soon...
+            </div>
+          }
+        />
         <Route path="" element={<Navigate to="/dashboard" replace />} />
         <Route path="settings/:id" element={<ProfileSettings />} />
       </Route>

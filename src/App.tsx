@@ -18,6 +18,7 @@ import ReportsModule from "./components/Reports/ReportsModule";
 import StaffList from "./components/Staff/StaffList";
 import PatientDetail from "./components/Patients/PatientDetail";
 import ProfileSettings from "./components/Settings/ProfileSettings";
+import PatientMedicalPage from "./components/Appointments/PatientMedicalPage";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -52,9 +53,12 @@ const AppRoutes: React.FC = () => {
       >
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="patients" element={<PatientList />} />
-        <Route path="patients" element={<PatientList />} />
         <Route path="patients/:patientId" element={<PatientDetail />} />
         <Route path="appointments" element={<AppointmentCalendar />} />
+        <Route
+          path="appointment/:appointmentId"
+          element={<PatientMedicalPage />}
+        />
         <Route path="consultations" element={<ConsultationList />} />
         <Route path="pharmacy" element={<PharmacyInventory />} />
         <Route path="laboratory" element={<LaboratoryTests />} />
@@ -76,8 +80,8 @@ const AppRoutes: React.FC = () => {
             </div>
           }
         />
-        <Route path="" element={<Navigate to="/dashboard" replace />} />
         <Route path="settings/:id" element={<ProfileSettings />} />
+        <Route path="" element={<Navigate to="dashboard" replace />} />
       </Route>
     </Routes>
   );

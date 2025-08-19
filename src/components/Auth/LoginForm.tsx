@@ -80,6 +80,11 @@ const LoginForm: React.FC = () => {
       email: "receptionist@wollega.edu.et",
       password: "password123",
     },
+    {
+      role: "Laboratorist",
+      email: "laboratory@wollega.edu.et",
+      password: "password123",
+    },
   ];
 
   return (

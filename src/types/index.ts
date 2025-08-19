@@ -2,7 +2,13 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'doctor' | 'nurse' | 'pharmacist' | 'receptionist';
+  role:
+    | "admin"
+    | "doctor"
+    | "nurse"
+    | "pharmacist"
+    | "receptionist"
+    | "laboratory";
   avatar?: string;
   department?: string;
 }
@@ -14,14 +20,14 @@ export interface Patient {
   email: string;
   phone: string;
   dateOfBirth: string;
-  gender: 'male' | 'female' | 'other';
+  gender: "male" | "female" | "other";
   address: string;
   emergencyContact: string;
   medicalHistory: string[];
   allergies: string[];
   bloodType: string;
   registrationDate: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
 }
 
 export interface Appointment {
@@ -32,8 +38,8 @@ export interface Appointment {
   doctorName: string;
   date: string;
   time: string;
-  type: 'consultation' | 'follow-up' | 'emergency' | 'checkup';
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
+  type: "consultation" | "follow-up" | "emergency" | "checkup";
+  status: "scheduled" | "completed" | "cancelled" | "no-show";
   notes?: string;
   symptoms?: string;
 }
@@ -79,7 +85,7 @@ export interface Notification {
   id: string;
   title: string;
   message: string;
-  type: 'info' | 'warning' | 'error' | 'success';
+  type: "info" | "warning" | "error" | "success";
   read: boolean;
   createdAt: string;
   userId?: string;
@@ -88,17 +94,17 @@ export interface Notification {
 export interface Staff {
   id: string;
   fullName: string;
-  role: 'admin' | 'doctor' | 'nurse' | 'pharmacist' | 'receptionist';
+  role: "admin" | "doctor" | "nurse" | "pharmacist" | "receptionist";
   department: string;
   email: string;
   phone: string;
-  gender: 'male' | 'female' | 'other';
+  gender: "male" | "female" | "other";
   employeeId: string;
   joinDate: string;
   username: string;
-  shift: 'morning' | 'evening' | 'night' | 'full-time';
-  status: 'active' | 'inactive' | 'on-leave';
-  accessRole: 'admin' | 'doctor' | 'nurse' | 'pharmacist' | 'receptionist';
+  shift: "morning" | "evening" | "night" | "full-time";
+  status: "active" | "inactive" | "on-leave";
+  accessRole: "admin" | "doctor" | "nurse" | "pharmacist" | "receptionist";
   profilePicture?: string;
   address?: string;
   emergencyContact?: string;

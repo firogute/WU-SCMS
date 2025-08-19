@@ -14,9 +14,11 @@ import { Patient } from "../../types";
 import PatientForm from "./PatientForm";
 import Button from "../UI/Button";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext"; // add auth context
 
 const PatientList: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth(); // get logged-in user
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,18 +60,24 @@ const PatientList: React.FC = () => {
       patient.phone.includes(searchTerm)
   );
 
+  const canAddPatient = user?.role === "admin" || user?.role === "receptionist"; // only admin/receptionist can add
+  const canViewDetails = user?.role === "doctor" || user?.role === "nurse"; // doctor/nurse can view details if you want, adjust logic
+
   const handleAddPatient = () => {
     setEditingPatient(undefined);
     setShowPatientForm(true);
   };
 
   const handleEditPatient = (patient: Patient) => {
-    setEditingPatient(patient);
-    setShowPatientForm(true);
-    setSelectedPatient(null);
+    if (canAddPatient) {
+      setEditingPatient(patient);
+      setShowPatientForm(true);
+      setSelectedPatient(null);
+    }
   };
 
   const handleDeletePatient = async (patientId: string) => {
+    if (!canAddPatient) return;
     if (window.confirm("Are you sure you want to delete this patient?")) {
       const { error } = await supabase
         .from("patients")
@@ -84,17 +92,17 @@ const PatientList: React.FC = () => {
   };
 
   const handleSavePatient = async (patientData: Partial<Patient>) => {
+    if (!canAddPatient) return;
+
     if (editingPatient) {
-      // UPDATE existing
       const { data, error } = await supabase
         .from("patients")
         .update(patientData)
         .eq("id", editingPatient.id)
         .select();
 
-      if (error) {
-        console.error("Update failed:", error.message);
-      } else if (data && data.length > 0) {
+      if (error) console.error("Update failed:", error.message);
+      else if (data && data.length > 0) {
         setPatients((prev) =>
           prev.map((p) =>
             p.id === editingPatient.id ? { ...p, ...data[0] } : p
@@ -102,17 +110,14 @@ const PatientList: React.FC = () => {
         );
       }
     } else {
-      // INSERT new
       const { data, error } = await supabase
         .from("patients")
         .insert([patientData])
         .select();
 
-      if (error) {
-        console.error("Insert failed:", error.message);
-      } else if (data && data.length > 0) {
+      if (error) console.error("Insert failed:", error.message);
+      else if (data && data.length > 0)
         setPatients((prev) => [...prev, data[0]]);
-      }
     }
 
     setShowPatientForm(false);
@@ -121,8 +126,7 @@ const PatientList: React.FC = () => {
   const getAge = (dob: string) => {
     const birthDate = new Date(dob);
     const diff = Date.now() - birthDate.getTime();
-    const age = new Date(diff).getUTCFullYear() - 1970;
-    return age;
+    return new Date(diff).getUTCFullYear() - 1970;
   };
 
   return (
@@ -134,9 +138,11 @@ const PatientList: React.FC = () => {
             Manage patient records and information
           </p>
         </div>
-        <Button onClick={handleAddPatient} icon={Plus}>
-          Add Patient
-        </Button>
+        {canAddPatient && (
+          <Button onClick={handleAddPatient} icon={Plus}>
+            Add Patient
+          </Button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -151,16 +157,6 @@ const PatientList: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
               />
-            </div>
-            <div className="flex items-center space-x-3">
-              <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <Filter className="w-4 h-4" />
-                <span>Filter</span>
-              </button>
-              <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <Download className="w-4 h-4" />
-                <span>Export</span>
-              </button>
             </div>
           </div>
         </div>
@@ -192,20 +188,23 @@ const PatientList: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  {canAddPatient && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredPatients.map((patient) => (
                   <tr
-                    onClick={() => {
-                      setSelectedPatient(null);
-                      navigate(`/patients/${patient.id}`);
-                    }}
                     key={patient.id}
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className={`hover:bg-gray-50 cursor-pointer ${
+                      !canViewDetails ? "cursor-default" : ""
+                    }`}
+                    onClick={() => {
+                      if (canViewDetails) navigate(`/patients/${patient.id}`);
+                    }}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -260,48 +259,57 @@ const PatientList: React.FC = () => {
                         {patient.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="relative">
-                        <button
-                          onClick={() =>
-                            setSelectedPatient(
-                              selectedPatient === patient.id ? null : patient.id
-                            )
-                          }
-                          className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        {selectedPatient === patient.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                            <div className="py-1">
-                              <button
-                                onClick={() => {
-                                  setSelectedPatient(null);
-                                  navigate(`/patients/${patient.id}`);
-                                }}
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                              >
-                                <Eye className="w-4 h-4 mr-3" /> View Details
-                              </button>
-                              <button
-                                onClick={() => handleEditPatient(patient)}
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                              >
-                                <Edit className="w-4 h-4 mr-3" /> Edit Patient
-                              </button>
-                              <button
-                                onClick={() => handleDeletePatient(patient.id)}
-                                className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
-                              >
-                                <Trash2 className="w-4 h-4 mr-3" /> Delete
-                                Patient
-                              </button>
+                    {canAddPatient && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="relative">
+                          <button
+                            onClick={() =>
+                              setSelectedPatient(
+                                selectedPatient === patient.id
+                                  ? null
+                                  : patient.id
+                              )
+                            }
+                            className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {selectedPatient === patient.id && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                              <div className="py-1">
+                                {canViewDetails && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedPatient(null);
+                                      navigate(`/patients/${patient.id}`);
+                                    }}
+                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                  >
+                                    <Eye className="w-4 h-4 mr-3" /> View
+                                    Details
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleEditPatient(patient)}
+                                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                >
+                                  <Edit className="w-4 h-4 mr-3" /> Edit Patient
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleDeletePatient(patient.id)
+                                  }
+                                  className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-3" /> Delete
+                                  Patient
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </td>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -316,7 +324,6 @@ const PatientList: React.FC = () => {
               <span className="font-medium">{filteredPatients.length}</span> of{" "}
               <span className="font-medium">{patients.length}</span> results
             </div>
-            {/* Static pagination for now */}
             <div className="flex items-center space-x-2">
               <button
                 className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
@@ -338,12 +345,14 @@ const PatientList: React.FC = () => {
         </div>
       </div>
 
-      <PatientForm
-        patient={editingPatient}
-        isOpen={showPatientForm}
-        onClose={() => setShowPatientForm(false)}
-        onSave={handleSavePatient}
-      />
+      {canAddPatient && (
+        <PatientForm
+          patient={editingPatient}
+          isOpen={showPatientForm}
+          onClose={() => setShowPatientForm(false)}
+          onSave={handleSavePatient}
+        />
+      )}
     </div>
   );
 };

@@ -13,6 +13,7 @@ import PatientList from "./components/Patients/PatientList";
 import AppointmentCalendar from "./components/Appointments/AppointmentCalendar";
 import PharmacyInventory from "./components/Pharmacy/PharmacyInventory";
 import ConsultationList from "./components/Consultations/ConsultationList";
+import LaboratoryTests from "./components/Laboratory/LaboratoryTests";
 import ReportsModule from "./components/Reports/ReportsModule";
 import StaffList from "./components/Staff/StaffList";
 import PatientDetail from "./components/Patients/PatientDetail";
@@ -56,6 +57,7 @@ const AppRoutes: React.FC = () => {
         <Route path="appointments" element={<AppointmentCalendar />} />
         <Route path="consultations" element={<ConsultationList />} />
         <Route path="pharmacy" element={<PharmacyInventory />} />
+        <Route path="laboratory" element={<LaboratoryTests />} />
         <Route path="reports" element={<ReportsModule />} />
         <Route path="staff" element={<StaffList />} />
         <Route

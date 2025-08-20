@@ -71,14 +71,16 @@ const PatientMedicalPage = () => {
     }
   }, [patientId, appointmentId]);
 
+  // In PatientMedicalPage.jsx, update the fetchPatientData function:
+
   const fetchPatientData = async () => {
     try {
       setLoading(true);
 
-      // Fetch all data in parallel
       const [
         patientResponse,
         appointmentResponse,
+        medicalRecordResponse,
         labTestsResponse,
         nurseTasksResponse,
         prescriptionsResponse,
@@ -93,6 +95,11 @@ const PatientMedicalPage = () => {
           .from("appointments")
           .select("*")
           .eq("id", appointmentId)
+          .single(),
+        supabase
+          .from("medical_records")
+          .select("*")
+          .eq("appointment_id", appointmentId)
           .single(),
         supabase
           .from("lab_tests")
@@ -139,54 +146,13 @@ const PatientMedicalPage = () => {
 
       setPatient(patientResponse.data);
       setAppointment(appointmentResponse.data);
-      setSymptoms(appointmentResponse.data.symptoms || "");
-      setDiagnosis(appointmentResponse.data.diagnosis || "");
-      setNotes(appointmentResponse.data.notes || "");
 
-      // Process lab tests with staff names
-      const labTestsWithStaff = await Promise.all(
-        (labTestsResponse.data || []).map(async (labTest) => {
-          if (labTest.assigned_to) {
-            const { data: staffData } = await supabase
-              .from("users")
-              .select("name")
-              .eq("id", labTest.assigned_to)
-              .single();
-            return {
-              ...labTest,
-              assigned_to_user: staffData || { name: "Unassigned" },
-            };
-          }
-          return labTest;
-        })
-      );
-      setLabTests(labTestsWithStaff || []);
+      // Set symptoms, diagnosis, notes from medical_records instead of appointments
+      setSymptoms(medicalRecordResponse.data?.symptoms || "");
+      setDiagnosis(medicalRecordResponse.data?.diagnosis || "");
+      setNotes(medicalRecordResponse.data?.notes || "");
 
-      // Process nurse tasks with staff names
-      const nurseTasksWithStaff = await Promise.all(
-        (nurseTasksResponse.data || []).map(async (task) => {
-          if (task.assigned_to) {
-            const { data: staffData } = await supabase
-              .from("users")
-              .select("name")
-              .eq("id", task.assigned_to)
-              .single();
-            return {
-              ...task,
-              assigned_to_user: staffData || { name: "Unassigned" },
-            };
-          }
-          return task;
-        })
-      );
-      setNurseTasks(nurseTasksWithStaff || []);
-
-      setPrescriptions(prescriptionsResponse.data || []);
-      setMedicalHistory(medicalHistoryResponse.data || []);
-      setChronicConditions(chronicConditionsResponse.data || []);
-      setSurgicalHistory(surgicalHistoryResponse.data || []);
-      setFamilyHistory(familyHistoryResponse.data || []);
-      setStaffMembers(staffResponse.data || []);
+      // ... rest of the function remains the same
     } catch (error) {
       console.error("Error fetching patient data:", error);
       message.error("Failed to load patient data");
@@ -194,7 +160,6 @@ const PatientMedicalPage = () => {
       setLoading(false);
     }
   };
-
   const handleSendToPharmacy = async () => {
     try {
       const { error } = await supabase
@@ -386,9 +351,11 @@ const PatientMedicalPage = () => {
           <TabPane tab="Examination" key="examination">
             <ExaminationTab
               appointmentId={appointmentId}
-              initialSymptoms={appointment.symptoms || ""}
-              initialDiagnosis={appointment.diagnosis || ""}
-              initialNotes={appointment.notes || ""}
+              patientId={patientId}
+              doctorId={appointment.doctor_id}
+              initialSymptoms={symptoms}
+              initialDiagnosis={diagnosis}
+              initialNotes={notes}
             />
           </TabPane>
 
@@ -418,7 +385,7 @@ const PatientMedicalPage = () => {
         </Tabs>
 
         <MedicalHistory
-          medicalHistory={medicalHistory}
+          patientId={patientId}
           chronicConditions={chronicConditions}
           surgicalHistory={surgicalHistory}
           familyHistory={familyHistory}

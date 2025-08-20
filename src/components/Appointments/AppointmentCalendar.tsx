@@ -84,11 +84,24 @@ export default function AppointmentCalendar() {
     }
 
     if (data && data.length > 0) {
+      const newAppointment = data[0];
+
+      await supabase.from("medical_records").insert({
+        patient_id: newAppointment.patient_id,
+        doctor_id: newAppointment.doctor_id,
+        appointment_id: newAppointment.id,
+        date: newAppointment.date,
+        symptoms: "",
+        diagnosis: "",
+        treatment: "",
+        notes: "Medical record created for new appointment",
+      });
+
       setAppointments((prev) => [...prev, ...data]);
     }
 
     setShowForm(false);
-    fetchAppointments(); // ✅ Refresh the appointments list
+    fetchAppointments();
   }
 
   function renderAppointments() {

@@ -8,6 +8,8 @@ const { TextArea } = Input;
 
 const ExaminationTab = ({
   appointmentId,
+  patientId,
+  doctorId,
   initialSymptoms,
   initialDiagnosis,
   initialNotes,
@@ -45,17 +47,39 @@ const ExaminationTab = ({
     setError(null);
 
     try {
-      const { error } = await supabase
+      // First check if medical record exists
+      const { data: existingRecord } = await supabase
         .from("medical_records")
-        .update({
+        .select("id")
+        .eq("appointment_id", appointmentId)
+        .single();
+
+      if (existingRecord) {
+        const { error } = await supabase
+          .from("medical_records")
+          .update({
+            symptoms: debouncedSymptoms,
+            diagnosis: debouncedDiagnosis,
+            notes: debouncedNotes,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("appointment_id", appointmentId);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("medical_records").insert({
+          appointment_id: appointmentId,
+          patient_id: patientId, // You'll need to pass patientId as a prop
+          doctor_id: doctorId, // You'll need to pass doctorId as a prop
+          date: new Date().toISOString().split("T")[0],
           symptoms: debouncedSymptoms,
           diagnosis: debouncedDiagnosis,
           notes: debouncedNotes,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", appointmentId);
+          treatment: "", // Empty treatment for now
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       setLastSaveTime(new Date());
     } catch (err) {

@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Tabs,
   Table,
   Tag,
-  Descriptions,
   Button,
   Modal,
   Form,
@@ -12,7 +11,7 @@ import {
   DatePicker,
   Select,
   message,
-  Collapse,
+  Spin,
 } from "antd";
 import {
   History,
@@ -27,10 +26,9 @@ import { supabase } from "../../../lib/supabase";
 const { TabPane } = Tabs;
 const { TextArea } = Input;
 const { Option } = Select;
-const { Panel } = Collapse;
 
 const MedicalHistory = ({
-  medicalHistory,
+  patientId,
   chronicConditions,
   surgicalHistory,
   familyHistory,
@@ -40,7 +38,72 @@ const MedicalHistory = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentTab, setCurrentTab] = useState("visits");
   const [expandedHistory, setExpandedHistory] = useState({});
+  const [medicalHistory, setMedicalHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [form] = Form.useForm();
+
+  // Fetch medical history (previous appointments with related data)
+  const fetchMedicalHistory = async () => {
+    if (!patientId) return;
+
+    setLoadingHistory(true);
+    try {
+      // Get all appointments for this patient
+      const { data: appointments, error: appointmentsError } = await supabase
+        .from("appointments")
+        .select(
+          `
+          *,
+          doctor:users(name)
+        `
+        )
+        .eq("patient_id", patientId)
+        .order("date", { ascending: false });
+
+      if (appointmentsError) throw appointmentsError;
+
+      const historyWithDetails = await Promise.all(
+        (appointments || []).map(async (appointment) => {
+          const { data: medicalRecord } = await supabase
+            .from("medical_records")
+            .select("*")
+            .eq("appointment_id", appointment.id)
+            .single();
+
+          const { data: prescriptions } = await supabase
+            .from("prescriptions")
+            .select("*")
+            .eq("appointment_id", appointment.id);
+
+          // Get lab tests
+          const { data: labTests } = await supabase
+            .from("lab_tests")
+            .select("*")
+            .eq("appointment_id", appointment.id);
+
+          return {
+            ...appointment,
+            medical_record: medicalRecord || {},
+            prescriptions: prescriptions || [],
+            lab_tests: labTests || [],
+          };
+        })
+      );
+
+      setMedicalHistory(historyWithDetails);
+    } catch (error) {
+      console.error("Error fetching medical history:", error);
+      message.error("Failed to load medical history");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentTab === "visits") {
+      fetchMedicalHistory();
+    }
+  }, [currentTab, patientId]);
 
   const toggleHistoryExpansion = (id) => {
     setExpandedHistory((prev) => ({
@@ -108,7 +171,10 @@ const MedicalHistory = ({
               ? "surgical_history"
               : "family_history"
           )
-          .insert(values);
+          .insert({
+            ...values,
+            patient_id: patientId,
+          });
 
         if (error) throw error;
         message.success("Record added successfully");
@@ -161,65 +227,128 @@ const MedicalHistory = ({
         >
           {/* Previous Visits Tab */}
           <TabPane tab="Previous Visits" key="visits">
-            <div className="space-y-4">
-              {medicalHistory.map((visit) => (
-                <Card
-                  key={visit.id}
-                  size="small"
-                  className="cursor-pointer"
-                  onClick={() => toggleHistoryExpansion(visit.id)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-medium">
-                        {new Date(visit.date).toLocaleDateString()} -{" "}
-                        {visit.time}
-                      </h4>
-                      <p className="text-gray-600 text-sm">
-                        {visit.type} - {visit.status}
-                      </p>
-                    </div>
-                    <div className="flex items-center">
-                      {expandedHistory[visit.id] ? (
-                        <ChevronDown size={16} />
-                      ) : (
-                        <ChevronRight size={16} />
-                      )}
-                    </div>
-                  </div>
-
-                  {expandedHistory[visit.id] && (
-                    <div className="mt-4 pl-4 border-l-2 border-blue-200">
-                      <div className="mb-3">
-                        <h5 className="font-medium mb-1">Symptoms:</h5>
-                        <p className="text-gray-700">
-                          {visit.symptoms || "No symptoms recorded"}
+            {loadingHistory ? (
+              <div className="text-center py-8">
+                <Spin size="large" />
+                <p className="mt-4 text-gray-600">Loading medical history...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {medicalHistory.map((visit) => (
+                  <Card
+                    key={visit.id}
+                    size="small"
+                    className="cursor-pointer"
+                    onClick={() => toggleHistoryExpansion(visit.id)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-medium">
+                          {new Date(visit.date).toLocaleDateString()} -{" "}
+                          {visit.time}
+                        </h4>
+                        <p className="text-gray-600 text-sm">
+                          {visit.type} •{" "}
+                          {visit.doctor?.name || "Unknown Doctor"}
+                        </p>
+                        <p className="text-gray-600 text-sm">
+                          {visit.medical_record?.diagnosis ||
+                            "No diagnosis recorded"}
                         </p>
                       </div>
-
-                      {visit.diagnosis && (
-                        <div className="mb-3">
-                          <h5 className="font-medium mb-1">Diagnosis:</h5>
-                          <p className="text-gray-700">{visit.diagnosis}</p>
-                        </div>
-                      )}
-
-                      {visit.notes && (
-                        <div className="mb-3">
-                          <h5 className="font-medium mb-1">Notes:</h5>
-                          <p className="text-gray-700">{visit.notes}</p>
-                        </div>
-                      )}
+                      <div className="flex items-center">
+                        <Tag color="blue">
+                          {visit.prescriptions.length} prescriptions
+                        </Tag>
+                        <Tag color="green">
+                          {visit.lab_tests.length} lab tests
+                        </Tag>
+                        {expandedHistory[visit.id] ? (
+                          <ChevronDown size={16} />
+                        ) : (
+                          <ChevronRight size={16} />
+                        )}
+                      </div>
                     </div>
-                  )}
-                </Card>
-              ))}
-              {medicalHistory.length === 0 && (
-                <p className="text-gray-500 text-center py-4">
-                  No previous visits found
-                </p>
-              )}
-            </div>
+
+                    {expandedHistory[visit.id] && (
+                      <div className="mt-4 pl-4 border-l-2 border-blue-200">
+                        <div className="mb-3">
+                          <h5 className="font-medium mb-1">Symptoms:</h5>
+                          <p className="text-gray-700">
+                            {visit.medical_record?.symptoms ||
+                              "No symptoms recorded"}
+                          </p>
+                        </div>
+
+                        {visit.medical_record?.diagnosis && (
+                          <div className="mb-3">
+                            <h5 className="font-medium mb-1">Diagnosis:</h5>
+                            <p className="text-gray-700">
+                              {visit.medical_record.diagnosis}
+                            </p>
+                          </div>
+                        )}
+
+                        {visit.medical_record?.treatment && (
+                          <div className="mb-3">
+                            <h5 className="font-medium mb-1">Treatment:</h5>
+                            <p className="text-gray-700">
+                              {visit.medical_record.treatment}
+                            </p>
+                          </div>
+                        )}
+
+                        {visit.medical_record?.notes && (
+                          <div className="mb-3">
+                            <h5 className="font-medium mb-1">Notes:</h5>
+                            <p className="text-gray-700">
+                              {visit.medical_record.notes}
+                            </p>
+                          </div>
+                        )}
+
+                        {visit.prescriptions.length > 0 && (
+                          <div className="mb-3">
+                            <h5 className="font-medium mb-1">Prescriptions:</h5>
+                            <ul className="list-disc pl-5">
+                              {visit.prescriptions.map((rx, idx) => (
+                                <li key={idx} className="text-gray-700">
+                                  {rx.medicine_name} {rx.dosage} -{" "}
+                                  {rx.frequency} for {rx.duration}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {visit.lab_tests.length > 0 && (
+                          <div className="mb-3">
+                            <h5 className="font-medium mb-1">Lab Tests:</h5>
+                            <ul className="list-disc pl-5">
+                              {visit.lab_tests.map((lab, idx) => (
+                                <li key={idx} className="text-gray-700">
+                                  <span className="font-medium">
+                                    {lab.test_name}:
+                                  </span>{" "}
+                                  {lab.status}{" "}
+                                  {lab.results && `- ${lab.results}`}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                ))}
+                {medicalHistory.length === 0 && !loadingHistory && (
+                  <p className="text-gray-500 text-center py-4">
+                    No medical history found
+                  </p>
+                )}
+              </div>
+            )}
           </TabPane>
 
           {/* Chronic Conditions Tab */}
@@ -238,7 +367,8 @@ const MedicalHistory = ({
                   title: "Diagnosed",
                   dataIndex: "diagnosed_date",
                   key: "diagnosed_date",
-                  render: (date) => new Date(date).toLocaleDateString(),
+                  render: (date) =>
+                    date ? new Date(date).toLocaleDateString() : "Unknown",
                 },
                 { title: "Status", dataIndex: "status", key: "status" },
                 {
@@ -302,7 +432,8 @@ const MedicalHistory = ({
                   title: "Date",
                   dataIndex: "date",
                   key: "date",
-                  render: (date) => new Date(date).toLocaleDateString(),
+                  render: (date) =>
+                    date ? new Date(date).toLocaleDateString() : "Unknown",
                 },
                 { title: "Surgeon", dataIndex: "surgeon", key: "surgeon" },
                 { title: "Facility", dataIndex: "facility", key: "facility" },
@@ -411,28 +542,28 @@ const MedicalHistory = ({
               <Form.Item
                 name="condition"
                 label="Condition"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter condition" }]}
               >
                 <Input />
               </Form.Item>
               <Form.Item
                 name="diagnosed_date"
                 label="Diagnosed Date"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please select date" }]}
               >
                 <DatePicker className="w-full" />
               </Form.Item>
               <Form.Item
                 name="status"
                 label="Status"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter status" }]}
               >
                 <Input />
               </Form.Item>
               <Form.Item
                 name="severity"
                 label="Severity"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please select severity" }]}
               >
                 <Select>
                   <Option value="Mild">Mild</Option>
@@ -443,7 +574,7 @@ const MedicalHistory = ({
               <Form.Item
                 name="treatment"
                 label="Treatment"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter treatment" }]}
               >
                 <Input />
               </Form.Item>
@@ -458,31 +589,35 @@ const MedicalHistory = ({
               <Form.Item
                 name="procedure"
                 label="Procedure"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter procedure" }]}
               >
                 <Input />
               </Form.Item>
-              <Form.Item name="date" label="Date" rules={[{ required: true }]}>
+              <Form.Item
+                name="date"
+                label="Date"
+                rules={[{ required: true, message: "Please select date" }]}
+              >
                 <DatePicker className="w-full" />
               </Form.Item>
               <Form.Item
                 name="surgeon"
                 label="Surgeon"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter surgeon" }]}
               >
                 <Input />
               </Form.Item>
               <Form.Item
                 name="facility"
                 label="Facility"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter facility" }]}
               >
                 <Input />
               </Form.Item>
               <Form.Item
                 name="outcome"
                 label="Outcome"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter outcome" }]}
               >
                 <Input />
               </Form.Item>
@@ -497,23 +632,23 @@ const MedicalHistory = ({
               <Form.Item
                 name="relation"
                 label="Relation"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter relation" }]}
               >
                 <Input />
               </Form.Item>
               <Form.Item
                 name="condition"
                 label="Condition"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter condition" }]}
               >
                 <Input />
               </Form.Item>
               <Form.Item
                 name="age_of_onset"
                 label="Age of Onset"
-                rules={[{ required: true }]}
+                rules={[{ required: true, message: "Please enter age" }]}
               >
-                <Input type="number" />
+                <Input type="number" min="0" max="120" />
               </Form.Item>
               <Form.Item name="notes" label="Notes">
                 <TextArea rows={3} />

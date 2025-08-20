@@ -1,7 +1,6 @@
 import React from "react";
 import { Button } from "antd";
 import {
-  Save,
   Beaker,
   User,
   Tablet,
@@ -11,24 +10,14 @@ import {
 } from "lucide-react";
 
 const ActionButtons = ({
-  onSave,
   onAssignLab,
   onAssignNurse,
   onAddPrescription,
   onSendToPharmacy,
   onCompleteAppointment,
   onRefresh,
-  saving,
 }) => (
   <div className="flex flex-wrap gap-3 mb-6">
-    <Button
-      type="primary"
-      icon={<Save size={16} />}
-      loading={saving}
-      onClick={onSave}
-    >
-      Save Examination
-    </Button>
     <Button icon={<Beaker size={16} />} onClick={onAssignLab}>
       Assign Lab Test
     </Button>

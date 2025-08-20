@@ -195,24 +195,6 @@ const PatientMedicalPage = () => {
     }
   };
 
-  const handleSaveMedicalData = async () => {
-    try {
-      setSaving(true);
-      const { error } = await supabase
-        .from("appointments")
-        .update({ symptoms, diagnosis, notes })
-        .eq("id", appointmentId);
-
-      if (error) throw error;
-      message.success("Medical data saved successfully!");
-    } catch (error) {
-      console.error("Error saving medical data:", error);
-      message.error("Failed to save medical data");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleSendToPharmacy = async () => {
     try {
       const { error } = await supabase
@@ -390,7 +372,6 @@ const PatientMedicalPage = () => {
         </Card>
 
         <ActionButtons
-          onSave={handleSaveMedicalData}
           onAssignLab={() => setActiveModal({ type: "lab", data: null })}
           onAssignNurse={() => setActiveModal({ type: "nurse", data: null })}
           onAddPrescription={() =>
@@ -399,18 +380,15 @@ const PatientMedicalPage = () => {
           onSendToPharmacy={handleSendToPharmacy}
           onCompleteAppointment={handleCompleteAppointment}
           onRefresh={fetchPatientData}
-          saving={saving}
         />
 
         <Tabs defaultActiveKey="examination" type="card">
           <TabPane tab="Examination" key="examination">
             <ExaminationTab
-              symptoms={symptoms}
-              diagnosis={diagnosis}
-              notes={notes}
-              onSymptomsChange={setSymptoms}
-              onDiagnosisChange={setDiagnosis}
-              onNotesChange={setNotes}
+              appointmentId={appointmentId}
+              initialSymptoms={appointment.symptoms || ""}
+              initialDiagnosis={appointment.diagnosis || ""}
+              initialNotes={appointment.notes || ""}
             />
           </TabPane>
 

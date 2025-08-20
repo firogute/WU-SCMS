@@ -12,13 +12,22 @@ import {
   DatePicker,
   Select,
   message,
+  Collapse,
 } from "antd";
-import { History, Plus, Edit, Delete } from "lucide-react";
+import {
+  History,
+  Plus,
+  Edit,
+  Delete,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 
 const { TabPane } = Tabs;
 const { TextArea } = Input;
 const { Option } = Select;
+const { Panel } = Collapse;
 
 const MedicalHistory = ({
   medicalHistory,
@@ -30,7 +39,15 @@ const MedicalHistory = ({
   const [editingItem, setEditingItem] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentTab, setCurrentTab] = useState("visits");
+  const [expandedHistory, setExpandedHistory] = useState({});
   const [form] = Form.useForm();
+
+  const toggleHistoryExpansion = (id) => {
+    setExpandedHistory((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   const handleDelete = async (type, id) => {
     Modal.confirm({
@@ -142,6 +159,70 @@ const MedicalHistory = ({
           onChange={setCurrentTab}
           tabBarExtraContent={currentTab !== "visits" && renderAddButton()}
         >
+          {/* Previous Visits Tab */}
+          <TabPane tab="Previous Visits" key="visits">
+            <div className="space-y-4">
+              {medicalHistory.map((visit) => (
+                <Card
+                  key={visit.id}
+                  size="small"
+                  className="cursor-pointer"
+                  onClick={() => toggleHistoryExpansion(visit.id)}
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-medium">
+                        {new Date(visit.date).toLocaleDateString()} -{" "}
+                        {visit.time}
+                      </h4>
+                      <p className="text-gray-600 text-sm">
+                        {visit.type} - {visit.status}
+                      </p>
+                    </div>
+                    <div className="flex items-center">
+                      {expandedHistory[visit.id] ? (
+                        <ChevronDown size={16} />
+                      ) : (
+                        <ChevronRight size={16} />
+                      )}
+                    </div>
+                  </div>
+
+                  {expandedHistory[visit.id] && (
+                    <div className="mt-4 pl-4 border-l-2 border-blue-200">
+                      <div className="mb-3">
+                        <h5 className="font-medium mb-1">Symptoms:</h5>
+                        <p className="text-gray-700">
+                          {visit.symptoms || "No symptoms recorded"}
+                        </p>
+                      </div>
+
+                      {visit.diagnosis && (
+                        <div className="mb-3">
+                          <h5 className="font-medium mb-1">Diagnosis:</h5>
+                          <p className="text-gray-700">{visit.diagnosis}</p>
+                        </div>
+                      )}
+
+                      {visit.notes && (
+                        <div className="mb-3">
+                          <h5 className="font-medium mb-1">Notes:</h5>
+                          <p className="text-gray-700">{visit.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              ))}
+              {medicalHistory.length === 0 && (
+                <p className="text-gray-500 text-center py-4">
+                  No previous visits found
+                </p>
+              )}
+            </div>
+          </TabPane>
+
+          {/* Chronic Conditions Tab */}
           <TabPane tab="Chronic Conditions" key="conditions">
             <Table
               dataSource={chronicConditions}
@@ -205,6 +286,7 @@ const MedicalHistory = ({
             />
           </TabPane>
 
+          {/* Surgical History Tab */}
           <TabPane tab="Surgical History" key="surgical">
             <Table
               dataSource={surgicalHistory}
@@ -252,6 +334,7 @@ const MedicalHistory = ({
             />
           </TabPane>
 
+          {/* Family History Tab */}
           <TabPane tab="Family History" key="family">
             <Table
               dataSource={familyHistory}
@@ -304,6 +387,7 @@ const MedicalHistory = ({
         </Tabs>
       </Card>
 
+      {/* Add/Edit Modal */}
       <Modal
         title={`${editingItem ? "Edit" : "Add"} ${
           currentTab === "conditions"

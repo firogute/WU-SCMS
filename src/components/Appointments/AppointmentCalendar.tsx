@@ -68,7 +68,6 @@ export default function AppointmentCalendar() {
       return;
     }
 
-    // ✅ Clean the data before inserting
     const cleanAppointmentData = Object.fromEntries(
       Object.entries(appointmentData).filter(([_, value]) => value != null)
     );

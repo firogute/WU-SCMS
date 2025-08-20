@@ -11,42 +11,71 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
-import { LaboratoryTest, Patient, User } from "../../types";
-import { useDatabase } from "../../hooks/useDatabase";
-import { useAuth } from "../../contexts/AuthContext";
+import { supabase } from "../../lib/supabase";
 import Button from "../UI/Button";
 import Modal from "../UI/Modal";
 import FormField from "../UI/FormField";
 
+interface LaboratoryTest {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  test_name: string;
+  status: string;
+  assigned_to?: string;
+  notes?: string;
+  results?: string;
+  created_at: string;
+  updated_at: string;
+  patient?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  doctor?: {
+    name: string;
+  };
+  technician?: {
+    name: string;
+  };
+}
+
+interface Patient {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  student_id?: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 const LaboratoryTests: React.FC = () => {
-  const { user } = useAuth();
-  const {
-    getLaboratoryTests,
-    getPatients,
-    getUsers,
-    createLaboratoryTest,
-    updateLaboratoryTest,
-    deleteLaboratoryTest,
-    loading,
-  } = useDatabase();
   const [tests, setTests] = useState<LaboratoryTest[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<User[]>([]);
+  const [technicians, setTechnicians] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showTestForm, setShowTestForm] = useState(false);
   const [editingTest, setEditingTest] = useState<LaboratoryTest | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [selectedTest, setSelectedTest] = useState<LaboratoryTest | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     patient_id: "",
     doctor_id: "",
-    test_type: "",
-    test_description: "",
-    result_text: "",
-    status: "pending" as const,
+    test_name: "",
+    status: "pending",
+    assigned_to: "",
     notes: "",
+    results: "",
   });
 
   useEffect(() => {
@@ -54,24 +83,125 @@ const LaboratoryTests: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    const [testsData, patientsData, doctorsData] = await Promise.all([
-      getLaboratoryTests(),
-      getPatients(),
-      getUsers({ role: "doctor" }),
-    ]);
+    setLoading(true);
+    try {
+      // Fetch all data in parallel
+      const [testsData, patientsData, doctorsData, techniciansData] =
+        await Promise.all([
+          fetchLaboratoryTests(),
+          fetchPatients(),
+          fetchUsersByRole("doctor"),
+          fetchUsersByRole("lab_technician"),
+        ]);
 
-    setTests(testsData);
-    setPatients(patientsData);
-    setDoctors(doctorsData);
+      setTests(testsData);
+      setPatients(patientsData);
+      setDoctors(doctorsData);
+      setTechnicians(techniciansData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLaboratoryTests = async (): Promise<LaboratoryTest[]> => {
+    const { data, error } = await supabase
+      .from("lab_tests")
+      .select(
+        `
+        *,
+        patient:patients(first_name, last_name, email),
+        doctor:users(name),
+        technician:users(name)
+      `
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching lab tests:", error);
+      return [];
+    }
+    return data || [];
+  };
+
+  const fetchPatients = async (): Promise<Patient[]> => {
+    const { data, error } = await supabase
+      .from("patients")
+      .select("id, first_name, last_name, email, student_id")
+      .order("first_name");
+
+    if (error) {
+      console.error("Error fetching patients:", error);
+      return [];
+    }
+    return data || [];
+  };
+
+  const fetchUsersByRole = async (role: string): Promise<User[]> => {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, name, email, role")
+      .eq("role", role)
+      .order("name");
+
+    if (error) {
+      console.error(`Error fetching ${role}s:`, error);
+      return [];
+    }
+    return data || [];
+  };
+
+  const createLaboratoryTest = async (testData: Partial<LaboratoryTest>) => {
+    const { data, error } = await supabase
+      .from("lab_tests")
+      .insert([testData])
+      .select();
+
+    if (error) {
+      console.error("Error creating lab test:", error);
+      return null;
+    }
+    return data?.[0] || null;
+  };
+
+  const updateLaboratoryTest = async (
+    id: string,
+    testData: Partial<LaboratoryTest>
+  ) => {
+    const { data, error } = await supabase
+      .from("lab_tests")
+      .update(testData)
+      .eq("id", id)
+      .select();
+
+    if (error) {
+      console.error("Error updating lab test:", error);
+      return null;
+    }
+    return data?.[0] || null;
+  };
+
+  const deleteLaboratoryTest = async (id: string) => {
+    const { error } = await supabase.from("lab_tests").delete().eq("id", id);
+
+    if (error) {
+      console.error("Error deleting lab test:", error);
+      return false;
+    }
+    return true;
   };
 
   const filteredTests = tests.filter((test) => {
     const matchesSearch =
-      test.test_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      test.test_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${test.patient?.first_name} ${test.patient?.last_name}`
+      test.test_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      test.patient?.first_name
         .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+        .includes(searchTerm.toLowerCase()) ||
+      test.patient?.last_name
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      test.patient?.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || test.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -79,29 +209,38 @@ const LaboratoryTests: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
-    const testData = {
-      ...formData,
-      technician_id: user?.role === "lab_technician" ? user.id : undefined,
-      requested_at: new Date().toISOString(),
-      completed_at:
-        formData.status === "completed" ? new Date().toISOString() : undefined,
-    };
+    try {
+      const testData = {
+        patient_id: formData.patient_id,
+        doctor_id: formData.doctor_id,
+        test_name: formData.test_name,
+        status: formData.status,
+        assigned_to: formData.assigned_to || null,
+        notes: formData.notes || null,
+        results: formData.results || null,
+      };
 
-    let success = false;
-    if (editingTest) {
-      const result = await updateLaboratoryTest(editingTest.id, testData);
-      success = !!result;
-    } else {
-      const result = await createLaboratoryTest(testData);
-      success = !!result;
-    }
+      let success = false;
+      if (editingTest) {
+        const result = await updateLaboratoryTest(editingTest.id, testData);
+        success = !!result;
+      } else {
+        const result = await createLaboratoryTest(testData);
+        success = !!result;
+      }
 
-    if (success) {
-      setShowTestForm(false);
-      setEditingTest(null);
-      resetForm();
-      loadData();
+      if (success) {
+        setShowTestForm(false);
+        setEditingTest(null);
+        resetForm();
+        loadData(); // Reload data to get updates
+      }
+    } catch (error) {
+      console.error("Error saving test:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -109,11 +248,11 @@ const LaboratoryTests: React.FC = () => {
     setFormData({
       patient_id: "",
       doctor_id: "",
-      test_type: "",
-      test_description: "",
-      result_text: "",
+      test_name: "",
       status: "pending",
+      assigned_to: "",
       notes: "",
+      results: "",
     });
   };
 
@@ -122,20 +261,27 @@ const LaboratoryTests: React.FC = () => {
     setFormData({
       patient_id: test.patient_id,
       doctor_id: test.doctor_id,
-      test_type: test.test_type,
-      test_description: test.test_description || "",
-      result_text: test.result_text || "",
+      test_name: test.test_name,
       status: test.status,
+      assigned_to: test.assigned_to || "",
       notes: test.notes || "",
+      results: test.results || "",
     });
     setShowTestForm(true);
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this test?")) {
-      const success = await deleteLaboratoryTest(id);
-      if (success) {
-        loadData();
+      setLoading(true);
+      try {
+        const success = await deleteLaboratoryTest(id);
+        if (success) {
+          loadData();
+        }
+      } catch (error) {
+        console.error("Error deleting test:", error);
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -161,30 +307,30 @@ const LaboratoryTests: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300";
+        return "bg-green-100 text-green-800";
       case "cancelled":
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300";
+        return "bg-red-100 text-red-800";
       case "in_progress":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300";
+        return "bg-yellow-100 text-yellow-800";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const canCreateTest = user?.role === "admin" || user?.role === "doctor";
+  // Get current user role from localStorage or context
+  const currentUserRole = localStorage.getItem("userRole") || "doctor"; // Replace with actual auth context
+
+  const canCreateTest =
+    currentUserRole === "admin" || currentUserRole === "doctor";
   const canUpdateTest =
-    user?.role === "admin" || user?.role === "lab_technician";
+    currentUserRole === "admin" || currentUserRole === "lab_technician";
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Laboratory Tests
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            Manage laboratory tests and results
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Laboratory Tests</h1>
+          <p className="text-gray-600">Manage laboratory tests and results</p>
         </div>
         {canCreateTest && (
           <Button onClick={() => setShowTestForm(true)} icon={Plus}>
@@ -195,81 +341,71 @@ const LaboratoryTests: React.FC = () => {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Tests
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {tests.length}
-              </p>
+              <p className="text-sm font-medium text-gray-600">Total Tests</p>
+              <p className="text-2xl font-bold text-gray-900">{tests.length}</p>
             </div>
-            <TestTube className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <TestTube className="w-8 h-8 text-blue-600" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Pending
-              </p>
-              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+              <p className="text-sm font-medium text-gray-600">Pending</p>
+              <p className="text-2xl font-bold text-yellow-600">
                 {tests.filter((t) => t.status === "pending").length}
               </p>
             </div>
-            <Clock className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
+            <Clock className="w-8 h-8 text-yellow-600" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                In Progress
-              </p>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-sm font-medium text-gray-600">In Progress</p>
+              <p className="text-2xl font-bold text-blue-600">
                 {tests.filter((t) => t.status === "in_progress").length}
               </p>
             </div>
-            <Clock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <Clock className="w-8 h-8 text-blue-600" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Completed
-              </p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <p className="text-sm font-medium text-gray-600">Completed</p>
+              <p className="text-2xl font-bold text-green-600">
                 {tests.filter((t) => t.status === "completed").length}
               </p>
             </div>
-            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+            <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-4">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
                   placeholder="Search tests..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full bg-white text-gray-900"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -279,11 +415,11 @@ const LaboratoryTests: React.FC = () => {
               </select>
             </div>
             <div className="flex items-center space-x-3">
-              <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300">
+              <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700">
                 <Filter className="w-4 h-4" />
                 <span>Filter</span>
               </button>
-              <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300">
+              <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700">
                 <Download className="w-4 h-4" />
                 <span>Export</span>
               </button>
@@ -293,58 +429,55 @@ const LaboratoryTests: React.FC = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Test Details
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Patient
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Doctor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Requested Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-white divide-y divide-gray-200">
               {filteredTests.map((test) => (
-                <tr
-                  key={test.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
+                <tr key={test.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                        <TestTube className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <TestTube className="w-5 h-5 text-blue-600" />
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {test.test_type}
+                        <div className="text-sm font-medium text-gray-900">
+                          {test.test_name}
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {test.test_description}
+                        <div className="text-sm text-gray-500">
+                          {test.notes}
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
+                    <div className="text-sm text-gray-900">
                       {test.patient?.first_name} {test.patient?.last_name}
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {test.patient?.student_id}
+                    <div className="text-sm text-gray-500">
+                      {test.patient?.email}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {test.doctor?.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -359,14 +492,14 @@ const LaboratoryTests: React.FC = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {new Date(test.requested_at).toLocaleDateString()}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {new Date(test.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => handleViewResult(test)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        className="text-blue-600 hover:text-blue-800"
                         title="View Result"
                       >
                         <Eye className="w-4 h-4" />
@@ -374,7 +507,7 @@ const LaboratoryTests: React.FC = () => {
                       {canUpdateTest && (
                         <button
                           onClick={() => handleEdit(test)}
-                          className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"
+                          className="text-green-600 hover:text-green-800"
                           title="Edit Test"
                         >
                           <Edit className="w-4 h-4" />
@@ -411,14 +544,13 @@ const LaboratoryTests: React.FC = () => {
                     patient_id: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                 required
               >
                 <option value="">Select patient</option>
                 {patients.map((patient) => (
                   <option key={patient.id} value={patient.id}>
-                    {patient.first_name} {patient.last_name} (
-                    {patient.student_id})
+                    {patient.first_name} {patient.last_name} ({patient.email})
                   </option>
                 ))}
               </select>
@@ -433,7 +565,7 @@ const LaboratoryTests: React.FC = () => {
                     doctor_id: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                 required
               >
                 <option value="">Select doctor</option>
@@ -447,17 +579,17 @@ const LaboratoryTests: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="Test Type" required>
+            <FormField label="Test Name" required>
               <input
                 type="text"
-                value={formData.test_type}
+                value={formData.test_name}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    test_type: e.target.value,
+                    test_name: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                 placeholder="e.g., Blood Test, X-Ray, MRI"
                 required
               />
@@ -469,10 +601,10 @@ const LaboratoryTests: React.FC = () => {
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    status: e.target.value as any,
+                    status: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="pending">Pending</option>
                 <option value="in_progress">In Progress</option>
@@ -482,49 +614,57 @@ const LaboratoryTests: React.FC = () => {
             </FormField>
           </div>
 
-          <FormField label="Test Description">
-            <textarea
-              value={formData.test_description}
+          <FormField label="Assign to Technician">
+            <select
+              value={formData.assigned_to}
               onChange={(e) =>
                 setFormData((prev) => ({
                   ...prev,
-                  test_description: e.target.value,
+                  assigned_to: e.target.value,
                 }))
               }
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="Detailed description of the test..."
-            />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+            >
+              <option value="">Select technician</option>
+              {technicians.map((tech) => (
+                <option key={tech.id} value={tech.id}>
+                  {tech.name}
+                </option>
+              ))}
+            </select>
           </FormField>
-
-          {canUpdateTest && (
-            <FormField label="Test Result">
-              <textarea
-                value={formData.result_text}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    result_text: e.target.value,
-                  }))
-                }
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Enter test results..."
-              />
-            </FormField>
-          )}
 
           <FormField label="Notes">
             <textarea
               value={formData.notes}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, notes: e.target.value }))
+                setFormData((prev) => ({
+                  ...prev,
+                  notes: e.target.value,
+                }))
               }
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               placeholder="Additional notes..."
             />
           </FormField>
+
+          {canUpdateTest && (
+            <FormField label="Test Results">
+              <textarea
+                value={formData.results}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    results: e.target.value,
+                  }))
+                }
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                placeholder="Enter test results..."
+              />
+            </FormField>
+          )}
 
           <div className="flex justify-end space-x-3">
             <Button
@@ -559,40 +699,23 @@ const LaboratoryTests: React.FC = () => {
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className="font-medium text-gray-700 dark:text-gray-300">
-                  Patient
-                </h4>
-                <p className="text-gray-900 dark:text-white">
+                <h4 className="font-medium text-gray-700">Patient</h4>
+                <p className="text-gray-900">
                   {selectedTest.patient?.first_name}{" "}
                   {selectedTest.patient?.last_name}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {selectedTest.patient?.student_id}
+                <p className="text-sm text-gray-500">
+                  {selectedTest.patient?.email}
                 </p>
               </div>
               <div>
-                <h4 className="font-medium text-gray-700 dark:text-gray-300">
-                  Test Type
-                </h4>
-                <p className="text-gray-900 dark:text-white">
-                  {selectedTest.test_type}
-                </p>
+                <h4 className="font-medium text-gray-700">Test Name</h4>
+                <p className="text-gray-900">{selectedTest.test_name}</p>
               </div>
             </div>
 
             <div>
-              <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Test Description
-              </h4>
-              <p className="text-gray-900 dark:text-white">
-                {selectedTest.test_description}
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Status
-              </h4>
+              <h4 className="font-medium text-gray-700 mb-2">Status</h4>
               <div className="flex items-center space-x-2">
                 {getStatusIcon(selectedTest.status)}
                 <span
@@ -605,14 +728,12 @@ const LaboratoryTests: React.FC = () => {
               </div>
             </div>
 
-            {selectedTest.result_text && (
+            {selectedTest.results && (
               <div>
-                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Test Result
-                </h4>
-                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                  <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
-                    {selectedTest.result_text}
+                <h4 className="font-medium text-gray-700 mb-2">Test Results</h4>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-gray-900 whitespace-pre-wrap">
+                    {selectedTest.results}
                   </p>
                 </div>
               </div>
@@ -620,24 +741,20 @@ const LaboratoryTests: React.FC = () => {
 
             {selectedTest.notes && (
               <div>
-                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Notes
-                </h4>
-                <p className="text-gray-900 dark:text-white">
-                  {selectedTest.notes}
-                </p>
+                <h4 className="font-medium text-gray-700 mb-2">Notes</h4>
+                <p className="text-gray-900">{selectedTest.notes}</p>
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500">
               <div>
                 <span className="font-medium">Requested:</span>{" "}
-                {new Date(selectedTest.requested_at).toLocaleString()}
+                {new Date(selectedTest.created_at).toLocaleString()}
               </div>
-              {selectedTest.completed_at && (
+              {selectedTest.updated_at && (
                 <div>
-                  <span className="font-medium">Completed:</span>{" "}
-                  {new Date(selectedTest.completed_at).toLocaleString()}
+                  <span className="font-medium">Last Updated:</span>{" "}
+                  {new Date(selectedTest.updated_at).toLocaleString()}
                 </div>
               )}
             </div>

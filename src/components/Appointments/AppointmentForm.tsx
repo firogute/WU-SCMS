@@ -131,24 +131,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         updated_at: new Date().toISOString(),
       };
 
-      if (appointment?.id) {
-        const { error } = await supabase
-          .from("appointments")
-          .update(appointmentData)
-          .eq("id", appointment.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("appointments")
-          .insert([
-            { ...appointmentData, created_at: new Date().toISOString() },
-          ]);
-        if (error) throw error;
-      }
+      if (onSaved) onSaved(appointmentData);
 
       setLoading(false);
       onClose();
-      if (onSaved) onSaved(appointmentData);
     } catch (error: any) {
       setLoading(false);
       setSubmitError(error.message);
@@ -288,7 +274,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                     >
                       <option value="consultation">Consultation</option>
                       <option value="follow-up">Follow-up</option>
-                      <option value="emergery">Emergency</option>
+                      <option value="emergency">Emergency</option>
                       <option value="checkup">Checkup</option>
                     </select>
                   </FormField>

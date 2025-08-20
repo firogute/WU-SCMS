@@ -1,10 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, Table, Tag, Button, Modal, message } from "antd";
 import { Plus, Edit, Delete } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 
-const LabTestsTab = ({ labTests, onAddTest }) => {
-  const [loading, setLoading] = useState(false);
+const LabTestsTab = ({ appointmentId, labTests, setLabTests, onAddTest }) => {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLabTests();
+  }, [appointmentId]);
+
+  const fetchLabTests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("lab_tests")
+        .select("*")
+        .eq("appointment_id", appointmentId);
+
+      if (error) throw error;
+      setLabTests(data || []);
+    } catch (error) {
+      console.error("Error fetching lab tests:", error);
+      message.error("Failed to load lab tests");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -46,8 +67,6 @@ const LabTestsTab = ({ labTests, onAddTest }) => {
 
           if (error) throw error;
           message.success("Lab test deleted successfully");
-          // Refresh data by calling parent's refresh function
-          window.location.reload(); // Simple refresh for demo
         } catch (error) {
           console.error("Error deleting lab test:", error);
           message.error("Failed to delete lab test");

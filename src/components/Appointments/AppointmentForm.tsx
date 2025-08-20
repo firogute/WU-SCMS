@@ -9,7 +9,7 @@ interface AppointmentFormProps {
   appointment?: Appointment;
   isOpen: boolean;
   onClose: () => void;
-  onSaved?: () => void;
+  onSaved?: (appointmentData: Partial<Appointment>) => void;
 }
 
 interface Patient {
@@ -29,10 +29,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   onClose,
   onSaved,
 }) => {
-  // Form state stores UUIDs for patientId and doctorId, and other fields
-  const [formData, setFormData] = useState<Partial<Appointment>>({
-    patientId: appointment?.patientId || "",
-    doctorId: appointment?.doctorId || "",
+  const [formData, setFormData] = useState({
+    patient_id: appointment?.patient_id || "",
+    doctor_id: appointment?.doctor_id || "",
     date: appointment?.date || new Date().toISOString().split("T")[0],
     time: appointment?.time || "09:00",
     type: appointment?.type || "consultation",
@@ -42,12 +41,12 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
 
-  // Fetch patients & doctors on open
   useEffect(() => {
     if (!isOpen) return;
 
@@ -72,12 +71,11 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     fetchDoctors();
   }, [isOpen]);
 
-  // Reset formData on open or appointment change
   useEffect(() => {
     if (appointment) {
       setFormData({
-        patientId: appointment.patientId || "",
-        doctorId: appointment.doctorId || "",
+        patient_id: appointment.patient_id || "",
+        doctor_id: appointment.doctor_id || "",
         date: appointment.date || new Date().toISOString().split("T")[0],
         time: appointment.time || "09:00",
         type: appointment.type || "consultation",
@@ -87,8 +85,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       });
     } else {
       setFormData({
-        patientId: "",
-        doctorId: "",
+        patient_id: "",
+        doctor_id: "",
         date: new Date().toISOString().split("T")[0],
         time: "09:00",
         type: "consultation",
@@ -98,14 +96,15 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       });
     }
     setErrors({});
+    setSubmitError("");
   }, [appointment, isOpen]);
 
   if (!isOpen) return null;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.patientId) newErrors.patientId = "Patient is required";
-    if (!formData.doctorId) newErrors.doctorId = "Doctor is required";
+    if (!formData.patient_id) newErrors.patient_id = "Patient is required";
+    if (!formData.doctor_id) newErrors.doctor_id = "Doctor is required";
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.time) newErrors.time = "Time is required";
     setErrors(newErrors);
@@ -114,16 +113,17 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError("");
     if (!validateForm()) return;
 
     setLoading(true);
 
     try {
       const appointmentData = {
-        patient_id: formData.patientId,
-        doctor_id: formData.doctorId,
+        patient_id: formData.patient_id,
+        doctor_id: formData.doctor_id,
         date: formData.date,
-        time: formData.time,
+        time: formData.time + ":00",
         type: formData.type,
         status: formData.status,
         symptoms: formData.symptoms,
@@ -132,14 +132,12 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       };
 
       if (appointment?.id) {
-        // Update
         const { error } = await supabase
           .from("appointments")
           .update(appointmentData)
           .eq("id", appointment.id);
         if (error) throw error;
       } else {
-        // Insert new
         const { error } = await supabase
           .from("appointments")
           .insert([
@@ -150,17 +148,21 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
       setLoading(false);
       onClose();
-      if (onSaved) onSaved();
+      if (onSaved) onSaved(appointmentData);
     } catch (error: any) {
       setLoading(false);
-      alert("Error saving appointment: " + error.message);
+      setSubmitError(error.message);
+      console.error("Error saving appointment:", error);
     }
   };
 
-  const handleInputChange = (field: keyof Appointment, value: any) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+    if (submitError) {
+      setSubmitError("");
     }
   };
 
@@ -202,13 +204,19 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 </button>
               </div>
 
+              {submitError && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+                  <strong>Error:</strong> {submitError}
+                </div>
+              )}
+
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField label="Patient" required error={errors.patientId}>
+                  <FormField label="Patient" required error={errors.patient_id}>
                     <select
-                      value={formData.patientId}
+                      value={formData.patient_id}
                       onChange={(e) =>
-                        handleInputChange("patientId", e.target.value)
+                        handleInputChange("patient_id", e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
@@ -221,11 +229,11 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                     </select>
                   </FormField>
 
-                  <FormField label="Doctor" required error={errors.doctorId}>
+                  <FormField label="Doctor" required error={errors.doctor_id}>
                     <select
-                      value={formData.doctorId}
+                      value={formData.doctor_id}
                       onChange={(e) =>
-                        handleInputChange("doctorId", e.target.value)
+                        handleInputChange("doctor_id", e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
@@ -274,13 +282,13 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                     <select
                       value={formData.type}
                       onChange={(e) =>
-                        handleInputChange("type", e.target.value as any)
+                        handleInputChange("type", e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="consultation">Consultation</option>
                       <option value="follow-up">Follow-up</option>
-                      <option value="emergency">Emergency</option>
+                      <option value="emergery">Emergency</option>
                       <option value="checkup">Checkup</option>
                     </select>
                   </FormField>
@@ -289,7 +297,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                     <select
                       value={formData.status}
                       onChange={(e) =>
-                        handleInputChange("status", e.target.value as any)
+                        handleInputChange("status", e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
@@ -334,12 +342,20 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
               >
                 Cancel
               </Button>
-              <Button type="submit" icon={Save} disabled={loading}>
-                {loading
-                  ? "Saving..."
-                  : appointment
-                  ? "Update Appointment"
-                  : "Schedule Appointment"}
+              <Button type="submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {appointment
+                      ? "Update Appointment"
+                      : "Schedule Appointment"}
+                  </>
+                )}
               </Button>
             </div>
           </form>

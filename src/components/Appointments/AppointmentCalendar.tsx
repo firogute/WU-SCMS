@@ -6,7 +6,7 @@ import AppointmentForm from "./AppointmentForm";
 import Button from "../UI/Button";
 import { useAuth } from "../../contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom"; // ✅ import navigate
+import { useNavigate } from "react-router-dom";
 
 type Patient = {
   id: string;
@@ -16,7 +16,7 @@ type Patient = {
 
 export default function AppointmentCalendar() {
   const { user } = useAuth();
-  const navigate = useNavigate(); // ✅ initialize navigate
+  const navigate = useNavigate();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -63,13 +63,32 @@ export default function AppointmentCalendar() {
   }
 
   async function handleAddAppointment(appointmentData: Partial<Appointment>) {
+    if (!appointmentData) {
+      console.error("No appointment data provided");
+      return;
+    }
+
+    // ✅ Clean the data before inserting
+    const cleanAppointmentData = Object.fromEntries(
+      Object.entries(appointmentData).filter(([_, value]) => value != null)
+    );
+
     const { data, error } = await supabase
       .from("appointments")
-      .insert([appointmentData])
+      .insert([cleanAppointmentData])
       .select("*");
-    if (error) console.error(error);
-    else if (data) setAppointments((prev) => [...prev, ...data]);
+
+    if (error) {
+      console.error("Error adding appointment:", error);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      setAppointments((prev) => [...prev, ...data]);
+    }
+
     setShowForm(false);
+    fetchAppointments(); // ✅ Refresh the appointments list
   }
 
   function renderAppointments() {
@@ -105,10 +124,8 @@ export default function AppointmentCalendar() {
                 exit={{ opacity: 0, y: -15 }}
                 transition={{ duration: 0.2 }}
                 className="p-4 bg-white rounded-2xl shadow hover:shadow-lg transition-all flex justify-between items-center cursor-pointer"
-                onClick={
-                  () =>
-                    user?.role === "doctor" &&
-                    navigate(`/appointment/${appt.id}`) // ✅ navigate to route
+                onClick={() =>
+                  user?.role === "doctor" && navigate(`/appointment/${appt.id}`)
                 }
               >
                 <div className="flex items-center gap-3">
@@ -148,10 +165,8 @@ export default function AppointmentCalendar() {
           Upcoming Appointments
         </h2>
         {(user.role === "admin" || user.role === "receptionist") && (
-          <Button
-            onClick={() => setShowForm(true)}
-            icon={<Plus className="w-4 h-4" />}
-          >
+          <Button type="button" onClick={() => setShowForm(true)}>
+            <Plus className="inline-block mr-2" />
             New Appointment
           </Button>
         )}
@@ -161,9 +176,9 @@ export default function AppointmentCalendar() {
 
       {showForm && (
         <AppointmentForm
-          patients={patients}
+          isOpen={showForm}
           onClose={() => setShowForm(false)}
-          onSubmit={handleAddAppointment}
+          onSaved={handleAddAppointment}
         />
       )}
     </div>

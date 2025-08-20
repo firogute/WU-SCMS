@@ -48,7 +48,6 @@ const MedicalHistory = ({
 
     setLoadingHistory(true);
     try {
-      // Get all appointments for this patient
       const { data: appointments, error: appointmentsError } = await supabase
         .from("appointments")
         .select(

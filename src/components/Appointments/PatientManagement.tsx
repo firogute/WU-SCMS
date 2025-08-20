@@ -71,8 +71,6 @@ const PatientMedicalPage = () => {
     }
   }, [patientId, appointmentId]);
 
-  // In PatientMedicalPage.jsx, update the fetchPatientData function:
-
   const fetchPatientData = async () => {
     try {
       setLoading(true);
@@ -81,7 +79,6 @@ const PatientMedicalPage = () => {
         patientResponse,
         appointmentResponse,
         medicalRecordResponse,
-        labTestsResponse,
         nurseTasksResponse,
         prescriptionsResponse,
         medicalHistoryResponse,
@@ -101,10 +98,6 @@ const PatientMedicalPage = () => {
           .select("*")
           .eq("appointment_id", appointmentId)
           .single(),
-        supabase
-          .from("lab_tests")
-          .select("*")
-          .eq("appointment_id", appointmentId),
         supabase
           .from("nurse_tasks")
           .select("*")
@@ -146,13 +139,14 @@ const PatientMedicalPage = () => {
 
       setPatient(patientResponse.data);
       setAppointment(appointmentResponse.data);
+      setChronicConditions(chronicConditionsResponse.data);
+      setSurgicalHistory(surgicalHistoryResponse.data);
+      setFamilyHistory(familyHistoryResponse.data);
+      setStaffMembers(staffResponse.data);
 
-      // Set symptoms, diagnosis, notes from medical_records instead of appointments
       setSymptoms(medicalRecordResponse.data?.symptoms || "");
       setDiagnosis(medicalRecordResponse.data?.diagnosis || "");
       setNotes(medicalRecordResponse.data?.notes || "");
-
-      // ... rest of the function remains the same
     } catch (error) {
       console.error("Error fetching patient data:", error);
       message.error("Failed to load patient data");
@@ -206,6 +200,8 @@ const PatientMedicalPage = () => {
         });
         if (error) throw error;
         message.success("Lab test assigned successfully");
+
+        setLabTests((prev) => [...prev, data]);
       } else if (activeModal.type === "nurse") {
         const { error } = await supabase.from("nurse_tasks").insert({
           appointment_id: appointmentId,
@@ -274,7 +270,7 @@ const PatientMedicalPage = () => {
         message.success("Prescription added successfully");
       }
 
-      fetchPatientData();
+      // fetchPatientData();
       setActiveModal({ type: null, data: null });
       form.resetFields();
     } catch (error) {
@@ -361,7 +357,9 @@ const PatientMedicalPage = () => {
 
           <TabPane tab="Lab Tests" key="lab">
             <LabTestsTab
+              appointmentId={appointmentId}
               labTests={labTests}
+              setLabTests={setLabTests}
               onAddTest={() => setActiveModal({ type: "lab", data: null })}
             />
           </TabPane>

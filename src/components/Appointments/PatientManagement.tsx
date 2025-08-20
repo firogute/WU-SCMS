@@ -307,10 +307,6 @@ const PatientMedicalPage = () => {
           <Button onClick={() => navigate(-1)} icon={<ArrowLeft size={16} />}>
             Back to Appointments
           </Button>
-          <div className="flex items-center">
-            <span className="mr-2 text-gray-600">Dr. Smith</span>
-            <Avatar size="small" icon={<User />} />
-          </div>
         </div>
 
         <PatientInfo patient={patient} />

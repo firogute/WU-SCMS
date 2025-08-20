@@ -22,9 +22,9 @@ const ExaminationTab = ({
   const [error, setError] = useState(null);
 
   // Debounce the values
-  const debouncedSymptoms = useDebounce(symptoms, 1000);
-  const debouncedDiagnosis = useDebounce(diagnosis, 1000);
-  const debouncedNotes = useDebounce(notes, 1000);
+  const debouncedSymptoms = useDebounce(symptoms, 10000);
+  const debouncedDiagnosis = useDebounce(diagnosis, 10000);
+  const debouncedNotes = useDebounce(notes, 10000);
 
   // Auto-save when debounced values change
   useEffect(() => {

@@ -93,7 +93,7 @@ export default function AppointmentCalendar() {
         symptoms: "",
         diagnosis: "",
         treatment: "",
-        notes: "Medical record created for new appointment",
+        notes: "New",
       });
 
       setAppointments((prev) => [...prev, ...data]);

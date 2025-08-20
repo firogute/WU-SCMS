@@ -125,7 +125,8 @@ export default function AppointmentCalendar() {
                 transition={{ duration: 0.2 }}
                 className="p-4 bg-white rounded-2xl shadow hover:shadow-lg transition-all flex justify-between items-center cursor-pointer"
                 onClick={() =>
-                  user?.role === "doctor" && navigate(`/appointment/${appt.id}`)
+                  user?.role === "doctor" &&
+                  navigate(`/appointment/${appt.id}/patient/${appt.patient_id}`)
                 }
               >
                 <div className="flex items-center gap-3">

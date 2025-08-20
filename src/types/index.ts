@@ -13,72 +13,76 @@ export interface User {
   department?: string;
 }
 
+// types.ts
 export interface Patient {
   id: string;
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string;
+  gender: string;
+  blood_type: string;
   email: string;
   phone: string;
-  dateOfBirth: string;
-  gender: "male" | "female" | "other";
   address: string;
-  emergencyContact: string;
-  medicalHistory: string[];
+  emergency_contact: string;
   allergies: string[];
-  bloodType: string;
-  registrationDate: string;
-  status: "active" | "inactive";
+  conditions: string[];
+  status: string;
 }
 
 export interface Appointment {
   id: string;
-  patientId: string;
-  patientName: string;
-  doctorId: string;
-  doctorName: string;
+  patient_id: string;
+  doctor_id: string;
   date: string;
   time: string;
-  type: "consultation" | "follow-up" | "emergency" | "checkup";
-  status: "scheduled" | "completed" | "cancelled" | "no-show";
-  notes?: string;
-  symptoms?: string;
-}
-
-export interface Medicine {
-  id: string;
-  name: string;
-  genericName: string;
-  manufacturer: string;
-  category: string;
-  stock: number;
-  minStock: number;
-  price: number;
-  expiryDate: string;
-  batchNumber: string;
-  description: string;
-}
-
-export interface Consultation {
-  id: string;
-  patientId: string;
-  doctorId: string;
-  appointmentId: string;
-  date: string;
+  type: string;
+  status: string;
   symptoms: string;
   diagnosis: string;
-  treatment: string;
-  prescriptions: Prescription[];
-  followUpDate?: string;
   notes: string;
+  vital_signs?: {
+    temperature: number;
+    blood_pressure: string;
+    heart_rate: number;
+    respiratory_rate: number;
+    oxygen_saturation: number;
+  };
+}
+
+export interface LabTest {
+  id: string;
+  appointment_id: string;
+  test_name: string;
+  status: string;
+  assigned_to: string;
+  notes: string;
+  results?: string;
+  created_at: string;
+}
+
+export interface NurseTask {
+  id: string;
+  appointment_id: string;
+  task: string;
+  status: string;
+  assigned_to: string;
+  notes: string;
+  completed_at?: string;
+  created_at: string;
 }
 
 export interface Prescription {
-  medicineId: string;
-  medicineName: string;
+  id: string;
+  consultation_id: string;
+  medicine_id: string;
+  medicine_name: string;
   dosage: string;
   frequency: string;
   duration: string;
   instructions: string;
+  status: string;
+  created_at: string;
 }
 
 export interface Notification {

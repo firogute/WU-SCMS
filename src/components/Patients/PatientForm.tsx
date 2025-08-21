@@ -528,7 +528,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" icon={Save}>
+              <Button type="submit" icon={<Save />}>
                 {patient ? "Update Patient" : "Save Patient"}
               </Button>
             </div>

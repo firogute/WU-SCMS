@@ -139,7 +139,7 @@ const PatientList: React.FC = () => {
           </p>
         </div>
         {canAddPatient && (
-          <Button onClick={handleAddPatient} icon={Plus}>
+          <Button onClick={handleAddPatient} icon={<Plus />}>
             Add Patient
           </Button>
         )}

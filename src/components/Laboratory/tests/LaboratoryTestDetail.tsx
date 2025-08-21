@@ -10,10 +10,10 @@ import {
   User,
   Stethoscope,
   UserCheck,
-  Calendar,
-  Clock,
   Copy,
   CheckCircle,
+  AlertCircle,
+  Shield,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import Button from "../../UI/Button";
@@ -43,14 +43,13 @@ interface LaboratoryTest {
   appointment_id: string;
   patient_id: string;
   test_name: string;
-  status: "pending" | "completed" | string; // tolerate legacy data
+  status: "pending" | "completed" | string;
   assigned_to?: string | null;
   notes?: string | null;
   results?: string | null;
   created_at: string;
   updated_at: string;
 
-  // Joins
   patients?: PatientLite | null;
   appointments?: {
     doctor?: PersonLite | null;
@@ -76,13 +75,24 @@ const LaboratoryTestDetail: React.FC = () => {
     notes: "",
   });
 
+  // Role-based permissions
+  const isAdmin = user?.role === "admin";
+  const isLabTechnician = user?.role === "laboratory";
+  const isCompleted = test?.status === "completed";
+
+  // Permissions logic
+  const canEditResults =
+    (isLabTechnician && !isCompleted) || (isAdmin && !isCompleted);
+  const canChangeStatus = (isLabTechnician && !isCompleted) || isAdmin;
+  const canRevertStatus = isAdmin && isCompleted;
+  const canSaveResults = canEditResults;
+
   // --- Fetch ---
   useEffect(() => {
     if (testId) fetchTestDetail(testId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
-  const fetchTestDetail = async (testId: string) => {
+  const fetchTestDetail = async (id: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -90,19 +100,12 @@ const LaboratoryTestDetail: React.FC = () => {
         .select(
           `
           *,
-          patients (
-            first_name, last_name, email, phone, date_of_birth, gender, blood_type
-          ),
-          appointments:appointments (
-            id,
-            date,
-            time,
-            doctor:users ( id, name, email )
-          ),
-          technicians:users!lab_tests_assigned_to_fkey ( id, name, email )
+          patients (first_name, last_name, email, phone, date_of_birth, gender, blood_type),
+          appointments:appointments (id, date, time, doctor:users (id, name, email)),
+          technicians:users!lab_tests_assigned_to_fkey (id, name, email)
         `
         )
-        .eq("id", testId)
+        .eq("id", id)
         .single();
 
       if (error) {
@@ -111,18 +114,18 @@ const LaboratoryTestDetail: React.FC = () => {
         return;
       }
 
-      // Normalize relational fields (Supabase sometimes returns arrays)
+      // Normalize relational fields
       const normalized: LaboratoryTest = {
         ...data,
         patients: Array.isArray(data?.patients)
           ? data.patients[0]
-          : data?.patients ?? null,
+          : data?.patients,
         appointments: data?.appointments
           ? {
               ...(Array.isArray(data.appointments)
                 ? data.appointments[0]
                 : data.appointments),
-              doctor: data?.appointments?.doctor
+              doctor: data.appointments.doctor
                 ? Array.isArray(data.appointments.doctor)
                   ? data.appointments.doctor[0]
                   : data.appointments.doctor
@@ -131,21 +134,17 @@ const LaboratoryTestDetail: React.FC = () => {
           : null,
         technicians: Array.isArray(data?.technicians)
           ? data.technicians[0]
-          : data?.technicians ?? null,
+          : data?.technicians,
       };
 
       setTest(normalized);
       setFormData({
-        status: (["pending", "completed"] as const).includes(
-          normalized.status as "pending" | "completed"
-        )
-          ? (normalized.status as "pending" | "completed")
-          : "pending",
-        results: normalized.results ?? "",
-        notes: normalized.notes ?? "",
+        status: normalized.status === "completed" ? "completed" : "pending",
+        results: normalized.results || "",
+        notes: normalized.notes || "",
       });
-    } catch (e) {
-      console.error("Error fetching test detail:", e);
+    } catch (error) {
+      console.error("Error fetching test detail:", error);
       setTest(null);
     } finally {
       setLoading(false);
@@ -154,7 +153,8 @@ const LaboratoryTestDetail: React.FC = () => {
 
   // --- Actions ---
   const handleSave = async () => {
-    if (!id) return;
+    if (!testId || !canSaveResults) return;
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -165,15 +165,67 @@ const LaboratoryTestDetail: React.FC = () => {
           notes: formData.notes || null,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", id);
+        .eq("id", testId);
 
       if (error) {
         console.error("Error updating test:", error);
         return;
       }
-      await fetchTestDetail(id);
-    } catch (e) {
-      console.error("Error updating test:", e);
+      await fetchTestDetail(testId);
+    } catch (error) {
+      console.error("Error updating test:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const markAsCompleted = async () => {
+    if (!canChangeStatus || isCompleted) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("lab_tests")
+        .update({
+          status: "completed",
+          results: formData.results || null,
+          notes: formData.notes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", testId);
+
+      if (error) {
+        console.error("Error marking test as completed:", error);
+        return;
+      }
+      await fetchTestDetail(testId!);
+    } catch (error) {
+      console.error("Error marking test as completed:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const revertToPending = async () => {
+    if (!canRevertStatus) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("lab_tests")
+        .update({
+          status: "pending",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", testId);
+
+      if (error) {
+        console.error("Error reverting test to pending:", error);
+        return;
+      }
+      await fetchTestDetail(testId!);
+    } catch (error) {
+      console.error("Error reverting test to pending:", error);
     } finally {
       setSaving(false);
     }
@@ -186,43 +238,56 @@ const LaboratoryTestDetail: React.FC = () => {
     const p = test.patients;
     const doc = test.appointments?.doctor;
     const tech = test.technicians;
+
     return [
-      `Test Report: ${test.test_name}`,
+      `LABORATORY TEST REPORT`,
+      `================================`,
+      `Test Name: ${test.test_name}`,
       `Test ID: ${test.id}`,
-      `Status: ${formData.status}`,
+      `Status: ${test.status.toUpperCase()}`,
       ``,
-      `Patient: ${p?.first_name ?? ""} ${p?.last_name ?? ""}`,
-      `Email: ${p?.email ?? "-"}`,
-      `Phone: ${p?.phone ?? "-"}`,
-      `DOB: ${
+      `PATIENT INFORMATION:`,
+      `--------------------------------`,
+      `Name: ${p?.first_name || ""} ${p?.last_name || ""}`,
+      `Email: ${p?.email || "-"}`,
+      `Phone: ${p?.phone || "-"}`,
+      `Date of Birth: ${
         p?.date_of_birth ? new Date(p.date_of_birth).toLocaleDateString() : "-"
       }`,
-      `Gender: ${p?.gender ?? "-"}`,
-      `Blood Type: ${p?.blood_type ?? "-"}`,
+      `Gender: ${p?.gender || "-"}`,
+      `Blood Type: ${p?.blood_type || "-"}`,
       ``,
-      `Requesting Doctor: ${doc?.name ?? "-"}`,
-      `Technician: ${tech?.name ?? "-"}`,
-      `Requested: ${new Date(test.created_at).toLocaleString()}`,
+      `TEST DETAILS:`,
+      `--------------------------------`,
+      `Requesting Doctor: ${doc?.name || "-"}`,
+      `Assigned Technician: ${tech?.name || "Unassigned"}`,
+      `Request Date: ${new Date(test.created_at).toLocaleString()}`,
       `Last Updated: ${new Date(test.updated_at).toLocaleString()}`,
       ``,
-      `Notes:`,
-      `${formData.notes || "-"}`,
+      `NOTES:`,
+      `--------------------------------`,
+      `${formData.notes || "No notes provided"}`,
       ``,
-      `Results:`,
-      `${formData.results || "-"}`,
+      `RESULTS:`,
+      `--------------------------------`,
+      `${formData.results || "No results available"}`,
+      ``,
+      `END OF REPORT`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Generated by: ${user?.name || "System"}`,
     ].join("\n");
-  }, [formData.results, formData.status, formData.notes, test]);
+  }, [test, formData, user]);
 
   const handleDownload = () => {
-    const content = buildReportText || formData.results || "";
+    const content = buildReportText;
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     const p = test?.patients;
     a.href = url;
-    a.download = `${test?.test_name ?? "Test"}_${p?.first_name ?? ""}_${
-      p?.last_name ?? ""
-    }.txt`;
+    a.download = `Lab_Report_${test?.test_name}_${p?.first_name}_${
+      p?.last_name
+    }_${new Date().toISOString().split("T")[0]}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -234,8 +299,8 @@ const LaboratoryTestDetail: React.FC = () => {
       await navigator.clipboard.writeText(text);
       setCopied(key);
       setTimeout(() => setCopied(null), 1500);
-    } catch (e) {
-      console.error("Copy failed", e);
+    } catch (error) {
+      console.error("Copy failed", error);
     }
   };
 
@@ -259,16 +324,17 @@ const LaboratoryTestDetail: React.FC = () => {
   const p = test.patients;
   const doc = test.appointments?.doctor;
   const tech = test.technicians;
+  const isTestCompleted = test.status === "completed";
 
   return (
-    <div className="space-y-6 print:space-y-3">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center print:hidden">
+      <div className="flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <Button
             variant="outline"
-            onClick={() => navigate("/laboratory/tests")}
-            icon={ArrowLeft}
+            onClick={() => navigate("/laboratory")}
+            icon={<ArrowLeft className="w-4 h-4" />}
           >
             Back to Tests
           </Button>
@@ -281,27 +347,79 @@ const LaboratoryTestDetail: React.FC = () => {
           </div>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline" onClick={handleDownload} icon={Download}>
+          <Button
+            variant="outline"
+            onClick={handleDownload}
+            icon={<Download className="w-4 h-4" />}
+          >
             Download
           </Button>
-          <Button variant="outline" onClick={handlePrint} icon={Printer}>
+          <Button
+            variant="outline"
+            onClick={handlePrint}
+            icon={<Printer className="w-4 h-4" />}
+          >
             Print
           </Button>
-          <Button onClick={handleSave} disabled={saving} icon={Save}>
-            {saving ? "Saving..." : "Save Results"}
-          </Button>
+          {canSaveResults && (
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              icon={<Save className="w-4 h-4" />}
+            >
+              {saving ? "Saving..." : "Save Results"}
+            </Button>
+          )}
+          {canChangeStatus && !isTestCompleted && (
+            <Button
+              onClick={markAsCompleted}
+              disabled={saving}
+              icon={<CheckCircle className="w-4 h-4" />}
+            >
+              Mark Completed
+            </Button>
+          )}
+          {canRevertStatus && isTestCompleted && (
+            <Button
+              variant="outline"
+              onClick={revertToPending}
+              disabled={saving}
+              icon={<AlertCircle className="w-4 h-4" />}
+            >
+              Revert to Pending
+            </Button>
+          )}
         </div>
       </div>
 
+      {/* Status Banner */}
+      {isTestCompleted && (
+        <div className="p-4 rounded-lg border bg-green-50 border-green-200 text-green-800">
+          <div className="flex items-center">
+            <Shield className="w-5 h-5 mr-2" />
+            <span className="font-semibold">TEST COMPLETED</span>
+            {!isAdmin && (
+              <span className="ml-2 text-sm">
+                • Only administrators can modify completed tests
+              </span>
+            )}
+            {isAdmin && (
+              <span className="ml-2 text-sm">
+                • You can revert this test to pending status
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:grid-cols-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Patient Card */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 print:border-0 print:shadow-none">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <User className="w-5 h-5 mr-2 text-purple-600" />
             Patient Information
           </h2>
-
           <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-600">Name</p>
@@ -309,17 +427,15 @@ const LaboratoryTestDetail: React.FC = () => {
                 {p?.first_name} {p?.last_name}
               </p>
             </div>
-
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Email</p>
                 <p className="font-medium text-gray-900">{p?.email}</p>
               </div>
               <button
-                type="button"
+                onClick={() => p?.email && copyToClipboard(p.email, "email")}
                 className="text-gray-500 hover:text-gray-700"
                 title="Copy email"
-                onClick={() => p?.email && copyToClipboard(p.email, "email")}
               >
                 {copied === "email" ? (
                   <CheckCircle className="w-5 h-5 text-green-600" />
@@ -328,12 +444,10 @@ const LaboratoryTestDetail: React.FC = () => {
                 )}
               </button>
             </div>
-
             <div>
               <p className="text-sm text-gray-600">Phone</p>
               <p className="font-medium text-gray-900">{p?.phone || "-"}</p>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-sm text-gray-600">Date of Birth</p>
@@ -358,20 +472,18 @@ const LaboratoryTestDetail: React.FC = () => {
         </div>
 
         {/* Test Meta */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 print:border-0 print:shadow-none">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Clock className="w-5 h-5 mr-2 text-blue-600" />
-            Test Metadata
+            <UserCheck className="w-5 h-5 mr-2 text-blue-600" />
+            Test Information
           </h2>
-
           <div className="space-y-4">
             <div>
               <p className="text-sm text-gray-600">Test ID</p>
-              <p className="font-mono text-gray-900 text-sm break-all">
+              <p className="font-mono text-sm text-gray-900 break-all">
                 {test.id}
               </p>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-sm text-gray-600">Requested</p>
@@ -386,47 +498,40 @@ const LaboratoryTestDetail: React.FC = () => {
                 </p>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-start space-x-2">
-                <Stethoscope className="w-5 h-5 text-blue-600 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-600">Requesting Doctor</p>
-                  <p className="font-medium text-gray-900">
-                    {doc?.name || "—"}
-                  </p>
-                  <p className="text-sm text-gray-500">{doc?.email || ""}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-2">
-                <UserCheck className="w-5 h-5 text-green-600 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-600">Technician</p>
-                  <p className="font-medium text-gray-900">
-                    {tech?.name || "Unassigned"}
-                  </p>
-                  <p className="text-sm text-gray-500">{tech?.email || ""}</p>
-                </div>
-              </div>
+            <div>
+              <p className="text-sm text-gray-600">Requesting Doctor</p>
+              <p className="font-medium text-gray-900">{doc?.name || "-"}</p>
+              <p className="text-sm text-gray-500">{doc?.email || ""}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Technician</p>
+              <p className="font-medium text-gray-900">
+                {tech?.name || "Unassigned"}
+              </p>
+              <p className="text-sm text-gray-500">{tech?.email || ""}</p>
             </div>
 
+            {/* Status Field with permissions */}
             <FormField label="Status">
-              {/* Respect schema: only pending/completed */}
               <select
                 value={formData.status}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    status:
-                      (e.target.value as "pending" | "completed") ?? "pending",
+                    status: e.target.value as "pending" | "completed",
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                disabled={!canChangeStatus || isTestCompleted}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="pending">Pending</option>
                 <option value="completed">Completed</option>
               </select>
+              {isTestCompleted && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Completed tests cannot be modified
+                </p>
+              )}
             </FormField>
 
             <FormField label="Notes">
@@ -436,7 +541,8 @@ const LaboratoryTestDetail: React.FC = () => {
                   setFormData((prev) => ({ ...prev, notes: e.target.value }))
                 }
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                disabled={!canEditResults || isTestCompleted}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder="Additional notes..."
               />
             </FormField>
@@ -444,33 +550,31 @@ const LaboratoryTestDetail: React.FC = () => {
         </div>
 
         {/* Results Editor */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:row-span-2 print:col-span-3 print:border-0 print:shadow-none">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:row-span-2">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <TestTube className="w-5 h-5 mr-2 text-indigo-600" />
             Test Results
           </h2>
-
-          <FormField label="Results (editable)">
+          <FormField label="Results">
             <textarea
               value={formData.results}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, results: e.target.value }))
               }
               rows={14}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 font-mono"
+              disabled={!canEditResults || isTestCompleted}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="Enter test results here..."
             />
           </FormField>
-
           <div className="flex items-center justify-between mt-3">
             <div className="text-sm text-gray-500">
-              Tip: This report is printable and downloadable. Keep PHI safe ✅
+              Keep PHI secure when sharing results
             </div>
             <button
-              type="button"
+              onClick={() => copyToClipboard(formData.results, "results")}
               className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-              onClick={() => copyToClipboard(formData.results || "", "results")}
-              title="Copy results to clipboard"
+              disabled={!formData.results}
             >
               {copied === "results" ? (
                 <>
@@ -485,32 +589,7 @@ const LaboratoryTestDetail: React.FC = () => {
               )}
             </button>
           </div>
-
-          {/* Read-only Preview */}
-          <div className="mt-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              Preview
-            </h3>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-auto">
-              <pre className="whitespace-pre-wrap text-sm text-gray-900">
-                {buildReportText}
-              </pre>
-            </div>
-          </div>
         </div>
-      </div>
-
-      {/* Footer actions (visible on print too) */}
-      <div className="flex items-center justify-end space-x-3 print:hidden">
-        <Button variant="outline" onClick={handleDownload} icon={Download}>
-          Download
-        </Button>
-        <Button variant="outline" onClick={handlePrint} icon={Printer}>
-          Print
-        </Button>
-        <Button onClick={handleSave} disabled={saving} icon={Save}>
-          {saving ? "Saving..." : "Save Results"}
-        </Button>
       </div>
     </div>
   );

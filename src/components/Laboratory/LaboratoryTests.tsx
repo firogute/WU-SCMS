@@ -1,4 +1,3 @@
-// LaboratoryTests.tsx (Main Dashboard)
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -92,7 +91,6 @@ const LaboratoryTests: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Fetch all data in parallel
       const [testsData, patientsData, doctorsData, techniciansData] =
         await Promise.all([
           fetchLaboratoryTests(),
@@ -234,15 +232,22 @@ const LaboratoryTests: React.FC = () => {
     setLoading(true);
 
     try {
-      const testData = {
-        patient_id: formData.patient_id,
-        doctor_id: formData.doctor_id,
-        test_name: formData.test_name,
-        status: formData.status,
-        assigned_to: formData.assigned_to || null,
-        notes: formData.notes || null,
-        results: formData.results || null,
-      };
+      let testData: Partial<LaboratoryTest>;
+      if (user?.role === "admin") {
+        // Admins can only update status to "pending"
+        testData = { status: "pending" };
+      } else {
+        // Other roles (e.g., laboratory) can update all fields
+        testData = {
+          patient_id: formData.patient_id,
+          doctor_id: formData.doctor_id,
+          test_name: formData.test_name,
+          status: formData.status,
+          assigned_to: formData.assigned_to || null,
+          notes: formData.notes || null,
+          results: formData.results || null,
+        };
+      }
 
       let success = false;
       if (editingTest) {
@@ -257,7 +262,7 @@ const LaboratoryTests: React.FC = () => {
         setShowTestForm(false);
         setEditingTest(null);
         resetForm();
-        loadData(); // Reload data to get updates
+        loadData();
       }
     } catch (error) {
       console.error("Error saving test:", error);
@@ -356,7 +361,10 @@ const LaboratoryTests: React.FC = () => {
           <p className="text-gray-600">Manage laboratory tests and results</p>
         </div>
         {canCreateTest && (
-          <Button onClick={() => setShowTestForm(true)} icon={Plus}>
+          <Button
+            onClick={() => setShowTestForm(true)}
+            icon={<Plus className="w-4 h-4" />}
+          >
             Order Test
           </Button>
         )}
@@ -373,7 +381,6 @@ const LaboratoryTests: React.FC = () => {
             <TestTube className="w-8 h-8 text-blue-600" />
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -385,7 +392,6 @@ const LaboratoryTests: React.FC = () => {
             <Clock className="w-8 h-8 text-yellow-600" />
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -397,7 +403,6 @@ const LaboratoryTests: React.FC = () => {
             <Clock className="w-8 h-8 text-blue-600" />
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -600,68 +605,150 @@ const LaboratoryTests: React.FC = () => {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="Patient" required>
-              <select
-                value={formData.patient_id}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    patient_id: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                required
-              >
-                <option value="">Select patient</option>
-                {patients.map((patient) => (
-                  <option key={patient.id} value={patient.id}>
-                    {patient.first_name} {patient.last_name} ({patient.email})
-                  </option>
-                ))}
-              </select>
-            </FormField>
+          {user?.role !== "admin" && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField label="Patient" required>
+                  <select
+                    value={formData.patient_id}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        patient_id: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    required
+                    disabled={editingTest && user?.role !== "laboratory"}
+                  >
+                    <option value="">Select patient</option>
+                    {patients.map((patient) => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.first_name} {patient.last_name} (
+                        {patient.email})
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
 
-            <FormField label="Doctor" required>
-              <select
-                value={formData.doctor_id}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    doctor_id: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                required
-              >
-                <option value="">Select doctor</option>
-                {doctors.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-          </div>
+                <FormField label="Doctor" required>
+                  <select
+                    value={formData.doctor_id}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        doctor_id: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    required
+                    disabled={editingTest && user?.role !== "laboratory"}
+                  >
+                    <option value="">Select doctor</option>
+                    {doctors.map((doctor) => (
+                      <option key={doctor.id} value={doctor.id}>
+                        {doctor.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="Test Name" required>
-              <input
-                type="text"
-                value={formData.test_name}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    test_name: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                placeholder="e.g., Blood Test, X-Ray, MRI"
-                required
-              />
-            </FormField>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField label="Test Name" required>
+                  <input
+                    type="text"
+                    value={formData.test_name}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        test_name: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    placeholder="e.g., Blood Test, X-Ray, MRI"
+                    required
+                    disabled={editingTest && user?.role !== "laboratory"}
+                  />
+                </FormField>
 
-            <FormField label="Status">
+                <FormField label="Status">
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        status: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    disabled={editingTest && user?.role !== "laboratory"}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </FormField>
+              </div>
+
+              <FormField label="Assign to Technician">
+                <select
+                  value={formData.assigned_to}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      assigned_to: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  disabled={editingTest && user?.role !== "laboratory"}
+                >
+                  <option value="">Select technician</option>
+                  {technicians.map((tech) => (
+                    <option key={tech.id} value={tech.id}>
+                      {tech.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+
+              <FormField label="Notes">
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  placeholder="Additional notes..."
+                  disabled={editingTest && user?.role !== "laboratory"}
+                />
+              </FormField>
+
+              <FormField label="Test Results">
+                <textarea
+                  value={formData.results}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      results: e.target.value,
+                    }))
+                  }
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  placeholder="Enter test results..."
+                  disabled={editingTest && user?.role !== "laboratory"}
+                />
+              </FormField>
+            </>
+          )}
+
+          {user?.role === "admin" && editingTest && (
+            <FormField label="Status" required>
               <select
                 value={formData.status}
                 onChange={(e) =>
@@ -673,62 +760,7 @@ const LaboratoryTests: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
               </select>
-            </FormField>
-          </div>
-
-          <FormField label="Assign to Technician">
-            <select
-              value={formData.assigned_to}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  assigned_to: e.target.value,
-                }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-            >
-              <option value="">Select technician</option>
-              {technicians.map((tech) => (
-                <option key={tech.id} value={tech.id}>
-                  {tech.name}
-                </option>
-              ))}
-            </select>
-          </FormField>
-
-          <FormField label="Notes">
-            <textarea
-              value={formData.notes}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  notes: e.target.value,
-                }))
-              }
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-              placeholder="Additional notes..."
-            />
-          </FormField>
-
-          {canUpdateTest && (
-            <FormField label="Test Results">
-              <textarea
-                value={formData.results}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    results: e.target.value,
-                  }))
-                }
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                placeholder="Enter test results..."
-              />
             </FormField>
           )}
 

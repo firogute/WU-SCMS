@@ -64,7 +64,7 @@ const AppRoutes: React.FC = () => {
         <Route path="pharmacy" element={<PharmacyInventory />} />
         <Route path="laboratory" element={<LaboratoryTests />} />
         <Route
-          path="laboratory/tests/testId"
+          path="laboratory/tests/:testId"
           element={<LaboratoryTestDetail />}
         />
         <Route path="reports" element={<ReportsModule />} />

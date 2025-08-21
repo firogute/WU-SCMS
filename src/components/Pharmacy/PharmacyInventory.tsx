@@ -1,100 +1,117 @@
-import React, { useState } from 'react';
-import { Pill, AlertTriangle, Plus, Search, Filter, Download, Package, TrendingDown } from 'lucide-react';
-import { Medicine } from '../../types';
-import MedicineForm from './MedicineForm';
-import Button from '../UI/Button';
+import React, { useState } from "react";
+import {
+  Pill,
+  AlertTriangle,
+  Plus,
+  Search,
+  Filter,
+  Download,
+  Package,
+  TrendingDown,
+} from "lucide-react";
+import { Medicine } from "../../types";
+import MedicineForm from "./MedicineForm";
+import Button from "../UI/Button";
 
 const PharmacyInventory: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [showMedicineForm, setShowMedicineForm] = useState(false);
-  const [editingMedicine, setEditingMedicine] = useState<Medicine | undefined>(undefined);
+  const [editingMedicine, setEditingMedicine] = useState<Medicine | undefined>(
+    undefined
+  );
   const [medicines, setMedicines] = useState<Medicine[]>([
     {
-      id: '1',
-      name: 'Paracetamol',
-      genericName: 'Acetaminophen',
-      manufacturer: 'PharmaCorp',
-      category: 'Analgesics',
+      id: "1",
+      name: "Paracetamol",
+      genericName: "Acetaminophen",
+      manufacturer: "PharmaCorp",
+      category: "Analgesics",
       stock: 5,
       minStock: 20,
-      price: 25.50,
-      expiryDate: '2025-06-15',
-      batchNumber: 'PC001',
-      description: 'Pain reliever and fever reducer'
+      price: 25.5,
+      expiryDate: "2025-06-15",
+      batchNumber: "PC001",
+      description: "Pain reliever and fever reducer",
     },
     {
-      id: '2',
-      name: 'Amoxicillin',
-      genericName: 'Amoxicillin Trihydrate',
-      manufacturer: 'AntibioTech',
-      category: 'Antibiotics',
+      id: "2",
+      name: "Amoxicillin",
+      genericName: "Amoxicillin Trihydrate",
+      manufacturer: "AntibioTech",
+      category: "Antibiotics",
       stock: 45,
       minStock: 30,
-      price: 89.00,
-      expiryDate: '2025-12-31',
-      batchNumber: 'AT002',
-      description: 'Broad-spectrum antibiotic'
+      price: 89.0,
+      expiryDate: "2025-12-31",
+      batchNumber: "AT002",
+      description: "Broad-spectrum antibiotic",
     },
     {
-      id: '3',
-      name: 'Lisinopril',
-      genericName: 'Lisinopril',
-      manufacturer: 'CardioMed',
-      category: 'Cardiovascular',
+      id: "3",
+      name: "Lisinopril",
+      genericName: "Lisinopril",
+      manufacturer: "CardioMed",
+      category: "Cardiovascular",
       stock: 12,
       minStock: 15,
       price: 156.75,
-      expiryDate: '2025-09-20',
-      batchNumber: 'CM003',
-      description: 'ACE inhibitor for hypertension'
+      expiryDate: "2025-09-20",
+      batchNumber: "CM003",
+      description: "ACE inhibitor for hypertension",
     },
     {
-      id: '4',
-      name: 'Metformin',
-      genericName: 'Metformin HCl',
-      manufacturer: 'DiabetesCare',
-      category: 'Antidiabetic',
+      id: "4",
+      name: "Metformin",
+      genericName: "Metformin HCl",
+      manufacturer: "DiabetesCare",
+      category: "Antidiabetic",
       stock: 78,
       minStock: 25,
       price: 45.25,
-      expiryDate: '2025-11-10',
-      batchNumber: 'DC004',
-      description: 'Type 2 diabetes medication'
+      expiryDate: "2025-11-10",
+      batchNumber: "DC004",
+      description: "Type 2 diabetes medication",
     },
     {
-      id: '5',
-      name: 'Ibuprofen',
-      genericName: 'Ibuprofen',
-      manufacturer: 'PainRelief Inc',
-      category: 'Analgesics',
+      id: "5",
+      name: "Ibuprofen",
+      genericName: "Ibuprofen",
+      manufacturer: "PainRelief Inc",
+      category: "Analgesics",
       stock: 8,
       minStock: 25,
-      price: 32.80,
-      expiryDate: '2025-08-05',
-      batchNumber: 'PR005',
-      description: 'Anti-inflammatory pain reliever'
-    }
+      price: 32.8,
+      expiryDate: "2025-08-05",
+      batchNumber: "PR005",
+      description: "Anti-inflammatory pain reliever",
+    },
   ]);
 
+  const categories = [
+    "all",
+    ...Array.from(new Set(medicines.map((m) => m.category))),
+  ];
 
-  const categories = ['all', ...Array.from(new Set(medicines.map(m => m.category)))];
-  
-  const filteredMedicines = medicines.filter(medicine => {
-    const matchesSearch = medicine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         medicine.genericName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         medicine.manufacturer.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || medicine.category === selectedCategory;
+  const filteredMedicines = medicines.filter((medicine) => {
+    const matchesSearch =
+      medicine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      medicine.genericName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      medicine.manufacturer.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "all" || medicine.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const lowStockMedicines = medicines.filter(m => m.stock <= m.minStock);
-  const totalValue = medicines.reduce((sum, m) => sum + (m.stock * m.price), 0);
+  const lowStockMedicines = medicines.filter((m) => m.stock <= m.minStock);
+  const totalValue = medicines.reduce((sum, m) => sum + m.stock * m.price, 0);
 
   const getStockStatus = (medicine: Medicine) => {
-    if (medicine.stock === 0) return { status: 'out-of-stock', color: 'bg-red-100 text-red-800' };
-    if (medicine.stock <= medicine.minStock) return { status: 'low-stock', color: 'bg-yellow-100 text-yellow-800' };
-    return { status: 'in-stock', color: 'bg-green-100 text-green-800' };
+    if (medicine.stock === 0)
+      return { status: "out-of-stock", color: "bg-red-100 text-red-800" };
+    if (medicine.stock <= medicine.minStock)
+      return { status: "low-stock", color: "bg-yellow-100 text-yellow-800" };
+    return { status: "in-stock", color: "bg-green-100 text-green-800" };
   };
 
   const handleAddMedicine = () => {
@@ -108,26 +125,28 @@ const PharmacyInventory: React.FC = () => {
   };
 
   const handleDeleteMedicine = (medicineId: string) => {
-    if (window.confirm('Are you sure you want to delete this medicine?')) {
-      setMedicines(prev => prev.filter(m => m.id !== medicineId));
+    if (window.confirm("Are you sure you want to delete this medicine?")) {
+      setMedicines((prev) => prev.filter((m) => m.id !== medicineId));
     }
   };
 
   const handleSaveMedicine = (medicineData: Partial<Medicine>) => {
     if (editingMedicine) {
       // Update existing medicine
-      setMedicines(prev => prev.map(m => 
-        m.id === editingMedicine.id 
-          ? { ...m, ...medicineData } as Medicine
-          : m
-      ));
+      setMedicines((prev) =>
+        prev.map((m) =>
+          m.id === editingMedicine.id
+            ? ({ ...m, ...medicineData } as Medicine)
+            : m
+        )
+      );
     } else {
       // Add new medicine
       const newMedicine: Medicine = {
         ...medicineData,
-        id: Date.now().toString()
+        id: Date.now().toString(),
       } as Medicine;
-      setMedicines(prev => [...prev, newMedicine]);
+      setMedicines((prev) => [...prev, newMedicine]);
     }
     setShowMedicineForm(false);
   };
@@ -135,11 +154,11 @@ const PharmacyInventory: React.FC = () => {
   const handleReorder = (medicine: Medicine) => {
     // Simulate reordering by adding stock
     const reorderQuantity = medicine.minStock * 2;
-    setMedicines(prev => prev.map(m => 
-      m.id === medicine.id 
-        ? { ...m, stock: m.stock + reorderQuantity }
-        : m
-    ));
+    setMedicines((prev) =>
+      prev.map((m) =>
+        m.id === medicine.id ? { ...m, stock: m.stock + reorderQuantity } : m
+      )
+    );
     alert(`Reordered ${reorderQuantity} units of ${medicine.name}`);
   };
 
@@ -147,10 +166,12 @@ const PharmacyInventory: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pharmacy Inventory</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Pharmacy Inventory
+          </h1>
           <p className="text-gray-600">Manage medicine stock and inventory</p>
         </div>
-        <Button onClick={handleAddMedicine} icon={Plus}>
+        <Button onClick={handleAddMedicine} icon={<Plus />}>
           Add Medicine
         </Button>
       </div>
@@ -160,8 +181,12 @@ const PharmacyInventory: React.FC = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Medicines</p>
-              <p className="text-2xl font-bold text-gray-900">{medicines.length}</p>
+              <p className="text-sm font-medium text-gray-600">
+                Total Medicines
+              </p>
+              <p className="text-2xl font-bold text-gray-900">
+                {medicines.length}
+              </p>
             </div>
             <Package className="w-8 h-8 text-blue-600" />
           </div>
@@ -170,8 +195,12 @@ const PharmacyInventory: React.FC = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Low Stock Alerts</p>
-              <p className="text-2xl font-bold text-red-600">{lowStockMedicines.length}</p>
+              <p className="text-sm font-medium text-gray-600">
+                Low Stock Alerts
+              </p>
+              <p className="text-2xl font-bold text-red-600">
+                {lowStockMedicines.length}
+              </p>
             </div>
             <AlertTriangle className="w-8 h-8 text-red-600" />
           </div>
@@ -180,8 +209,12 @@ const PharmacyInventory: React.FC = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Stock Value</p>
-              <p className="text-2xl font-bold text-green-600">${totalValue.toFixed(2)}</p>
+              <p className="text-sm font-medium text-gray-600">
+                Total Stock Value
+              </p>
+              <p className="text-2xl font-bold text-green-600">
+                ${totalValue.toFixed(2)}
+              </p>
             </div>
             <TrendingDown className="w-8 h-8 text-green-600" />
           </div>
@@ -191,7 +224,9 @@ const PharmacyInventory: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Categories</p>
-              <p className="text-2xl font-bold text-purple-600">{categories.length - 1}</p>
+              <p className="text-2xl font-bold text-purple-600">
+                {categories.length - 1}
+              </p>
             </div>
             <Pill className="w-8 h-8 text-purple-600" />
           </div>
@@ -206,16 +241,21 @@ const PharmacyInventory: React.FC = () => {
             <h3 className="font-semibold text-red-800">Low Stock Alerts</h3>
           </div>
           <div className="space-y-2">
-            {lowStockMedicines.map(medicine => (
-              <div key={medicine.id} className="flex items-center justify-between bg-white p-3 rounded border">
+            {lowStockMedicines.map((medicine) => (
+              <div
+                key={medicine.id}
+                className="flex items-center justify-between bg-white p-3 rounded border"
+              >
                 <div className="flex items-center space-x-3">
                   <Pill className="w-4 h-4 text-red-600" />
                   <div>
                     <p className="font-medium text-gray-900">{medicine.name}</p>
-                    <p className="text-sm text-gray-600">Current: {medicine.stock} | Min: {medicine.minStock}</p>
+                    <p className="text-sm text-gray-600">
+                      Current: {medicine.stock} | Min: {medicine.minStock}
+                    </p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => handleReorder(medicine)}
                   className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                 >
@@ -246,9 +286,9 @@ const PharmacyInventory: React.FC = () => {
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {categories.map(category => (
+                {categories.map((category) => (
                   <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
+                    {category === "all" ? "All Categories" : category}
                   </option>
                 ))}
               </select>
@@ -296,8 +336,10 @@ const PharmacyInventory: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredMedicines.map((medicine) => {
                 const stockStatus = getStockStatus(medicine);
-                const isExpiringSoon = new Date(medicine.expiryDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-                
+                const isExpiringSoon =
+                  new Date(medicine.expiryDate) <
+                  new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
                 return (
                   <tr key={medicine.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -306,9 +348,15 @@ const PharmacyInventory: React.FC = () => {
                           <Pill className="w-5 h-5 text-blue-600" />
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{medicine.name}</div>
-                          <div className="text-sm text-gray-500">{medicine.genericName}</div>
-                          <div className="text-xs text-gray-400">Batch: {medicine.batchNumber}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {medicine.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {medicine.genericName}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Batch: {medicine.batchNumber}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -318,8 +366,12 @@ const PharmacyInventory: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 font-medium">{medicine.stock} units</div>
-                      <div className="text-xs text-gray-500">Min: {medicine.minStock}</div>
+                      <div className="text-sm text-gray-900 font-medium">
+                        {medicine.stock} units
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Min: {medicine.minStock}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       ${medicine.price.toFixed(2)}
@@ -329,22 +381,26 @@ const PharmacyInventory: React.FC = () => {
                         {new Date(medicine.expiryDate).toLocaleDateString()}
                       </div>
                       {isExpiringSoon && (
-                        <div className="text-xs text-red-600">Expiring soon</div>
+                        <div className="text-xs text-red-600">
+                          Expiring soon
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${stockStatus.color}`}>
-                        {stockStatus.status.replace('-', ' ')}
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${stockStatus.color}`}
+                      >
+                        {stockStatus.status.replace("-", " ")}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
+                      <button
                         onClick={() => handleEditMedicine(medicine)}
                         className="text-blue-600 hover:text-blue-800 mr-3"
                       >
                         Edit
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteMedicine(medicine.id)}
                         className="text-red-600 hover:text-red-800"
                       >
@@ -361,14 +417,20 @@ const PharmacyInventory: React.FC = () => {
         <div className="px-6 py-4 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center text-sm text-gray-700">
-              Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredMedicines.length}</span> of{' '}
+              Showing <span className="font-medium">1</span> to{" "}
+              <span className="font-medium">{filteredMedicines.length}</span> of{" "}
               <span className="font-medium">{medicines.length}</span> results
             </div>
             <div className="flex items-center space-x-2">
-              <button className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50" disabled>
+              <button
+                className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                disabled
+              >
                 Previous
               </button>
-              <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded">1</button>
+              <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded">
+                1
+              </button>
               <button className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">
                 Next
               </button>

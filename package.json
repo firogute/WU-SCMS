@@ -13,7 +13,7 @@
     "@supabase/supabase-js": "^2.53.0",
     "@types/antd": "^0.12.32",
     "@types/react-router-dom": "^5.3.3",
-    "antd": "^5.27.0",
+    "antd": "^5.27.1",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.23.12",

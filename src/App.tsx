@@ -19,6 +19,7 @@ import StaffList from "./components/Staff/StaffList";
 import PatientDetail from "./components/Patients/PatientDetail";
 import ProfileSettings from "./components/Settings/ProfileSettings";
 import PatientManagement from "./components/Appointments/PatientManagement";
+import LaboratoryTestDetail from "./components/Laboratory/tests/LaboratoryTestDetail";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -62,6 +63,10 @@ const AppRoutes: React.FC = () => {
         <Route path="consultations" element={<ConsultationList />} />
         <Route path="pharmacy" element={<PharmacyInventory />} />
         <Route path="laboratory" element={<LaboratoryTests />} />
+        <Route
+          path="laboratory/tests/testId"
+          element={<LaboratoryTestDetail />}
+        />
         <Route path="reports" element={<ReportsModule />} />
         <Route path="staff" element={<StaffList />} />
         <Route

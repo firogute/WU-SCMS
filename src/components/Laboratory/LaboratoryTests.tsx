@@ -1,4 +1,6 @@
+// LaboratoryTests.tsx (Main Dashboard)
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   TestTube,
   Plus,
@@ -10,11 +12,15 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  User,
+  Stethoscope,
+  UserCheck,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import Button from "../UI/Button";
 import Modal from "../UI/Modal";
 import FormField from "../UI/FormField";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface LaboratoryTest {
   id: string;
@@ -27,15 +33,15 @@ interface LaboratoryTest {
   results?: string;
   created_at: string;
   updated_at: string;
-  patient?: {
+  patients?: {
     first_name: string;
     last_name: string;
     email: string;
   };
-  doctor?: {
+  doctors?: {
     name: string;
   };
-  technician?: {
+  technicians?: {
     name: string;
   };
 }
@@ -45,7 +51,6 @@ interface Patient {
   first_name: string;
   last_name: string;
   email: string;
-  student_id?: string;
 }
 
 interface User {
@@ -56,6 +61,8 @@ interface User {
 }
 
 const LaboratoryTests: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [tests, setTests] = useState<LaboratoryTest[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<User[]>([]);
@@ -91,7 +98,7 @@ const LaboratoryTests: React.FC = () => {
           fetchLaboratoryTests(),
           fetchPatients(),
           fetchUsersByRole("doctor"),
-          fetchUsersByRole("lab_technician"),
+          fetchUsersByRole("laboratory"),
         ]);
 
       setTests(testsData);
@@ -110,11 +117,13 @@ const LaboratoryTests: React.FC = () => {
       .from("lab_tests")
       .select(
         `
-        *,
-        patient:patients(first_name, last_name, email),
-        doctor:users(name),
-        technician:users(name)
-      `
+      *,
+      patients (first_name, last_name, email),
+      appointments (
+        doctor:users (id, name)
+      ),
+      technicians:users!lab_tests_assigned_to_fkey (id, name)
+    `
       )
       .order("created_at", { ascending: false });
 
@@ -122,13 +131,26 @@ const LaboratoryTests: React.FC = () => {
       console.error("Error fetching lab tests:", error);
       return [];
     }
-    return data || [];
+
+    const processedData =
+      data?.map((item) => ({
+        ...item,
+        patients: Array.isArray(item.patients)
+          ? item.patients[0]
+          : item.patients,
+        doctors: item.appointments?.doctor || null,
+        technicians: Array.isArray(item.technicians)
+          ? item.technicians[0]
+          : item.technicians,
+      })) || [];
+
+    return processedData;
   };
 
   const fetchPatients = async (): Promise<Patient[]> => {
     const { data, error } = await supabase
       .from("patients")
-      .select("id, first_name, last_name, email, student_id")
+      .select("id, first_name, last_name, email")
       .order("first_name");
 
     if (error) {
@@ -195,13 +217,13 @@ const LaboratoryTests: React.FC = () => {
   const filteredTests = tests.filter((test) => {
     const matchesSearch =
       test.test_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      test.patient?.first_name
-        .toLowerCase()
+      test.patients?.first_name
+        ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      test.patient?.last_name
-        .toLowerCase()
+      test.patients?.last_name
+        ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      test.patient?.email.toLowerCase().includes(searchTerm.toLowerCase());
+      test.patients?.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || test.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -291,13 +313,17 @@ const LaboratoryTests: React.FC = () => {
     setShowResultModal(true);
   };
 
+  const handleTestClick = (testId: string) => {
+    navigate(`/laboratory/tests/${testId}`);
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case "cancelled":
         return <XCircle className="w-4 h-4 text-red-600" />;
-      case "in_progress":
+      case "pending":
         return <Clock className="w-4 h-4 text-yellow-600" />;
       default:
         return <Clock className="w-4 h-4 text-gray-600" />;
@@ -310,20 +336,17 @@ const LaboratoryTests: React.FC = () => {
         return "bg-green-100 text-green-800";
       case "cancelled":
         return "bg-red-100 text-red-800";
-      case "in_progress":
+      case "pending":
         return "bg-yellow-100 text-yellow-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  // Get current user role from localStorage or context
-  const currentUserRole = localStorage.getItem("userRole") || "doctor"; // Replace with actual auth context
-
-  const canCreateTest =
-    currentUserRole === "admin" || currentUserRole === "doctor";
-  const canUpdateTest =
-    currentUserRole === "admin" || currentUserRole === "lab_technician";
+  // Role-based permissions
+  const canCreateTest = user?.role === "admin" || user?.role === "doctor";
+  const canUpdateTest = user?.role === "admin" || user?.role === "laboratory";
+  const canDeleteTest = user?.role === "admin";
 
   return (
     <div className="space-y-6">
@@ -441,6 +464,9 @@ const LaboratoryTests: React.FC = () => {
                   Doctor
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Technician
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -453,7 +479,11 @@ const LaboratoryTests: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredTests.map((test) => (
-                <tr key={test.id} className="hover:bg-gray-50">
+                <tr
+                  key={test.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => handleTestClick(test.id)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -470,15 +500,39 @@ const LaboratoryTests: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {test.patient?.first_name} {test.patient?.last_name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {test.patient?.email}
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-2">
+                        <User className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {test.patients?.first_name} {test.patients?.last_name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {test.patients?.email}
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {test.doctor?.name}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
+                        <Stethoscope className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="text-sm text-gray-900">
+                        {test.doctors?.name || "N/A"}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-2">
+                        <UserCheck className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div className="text-sm text-gray-900">
+                        {test.technicians?.name || "Unassigned"}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
@@ -496,7 +550,10 @@ const LaboratoryTests: React.FC = () => {
                     {new Date(test.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center space-x-2">
+                    <div
+                      className="flex items-center space-x-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         onClick={() => handleViewResult(test)}
                         className="text-blue-600 hover:text-blue-800"
@@ -511,6 +568,15 @@ const LaboratoryTests: React.FC = () => {
                           title="Edit Test"
                         >
                           <Edit className="w-4 h-4" />
+                        </button>
+                      )}
+                      {canDeleteTest && (
+                        <button
+                          onClick={() => handleDelete(test.id)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Delete Test"
+                        >
+                          <XCircle className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -701,11 +767,11 @@ const LaboratoryTests: React.FC = () => {
               <div>
                 <h4 className="font-medium text-gray-700">Patient</h4>
                 <p className="text-gray-900">
-                  {selectedTest.patient?.first_name}{" "}
-                  {selectedTest.patient?.last_name}
+                  {selectedTest.patients?.first_name}{" "}
+                  {selectedTest.patients?.last_name}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {selectedTest.patient?.email}
+                  {selectedTest.patients?.email}
                 </p>
               </div>
               <div>

@@ -2,7 +2,7 @@ import React from "react";
 import { Loader2 } from "lucide-react";
 
 interface ButtonProps {
-  children: React.ReactNode;
+  children?: React.ReactNode; // make children optional
   onClick?: () => void;
   type?: "button" | "submit" | "reset";
   variant?: "primary" | "secondary" | "danger" | "success" | "outline";
@@ -10,6 +10,7 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   className?: string;
+  icon?: React.ReactNode;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -21,6 +22,7 @@ const Button: React.FC<ButtonProps> = ({
   disabled = false,
   loading = false,
   className = "",
+  icon,
 }) => {
   const baseClasses =
     "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
@@ -48,6 +50,9 @@ const Button: React.FC<ButtonProps> = ({
       className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
     >
       {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+      {icon && !loading && (
+        <span className="mr-2 flex items-center">{icon}</span>
+      )}
       {children}
     </button>
   );

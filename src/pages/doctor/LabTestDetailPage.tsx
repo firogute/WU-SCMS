@@ -1,4 +1,3 @@
-// src/pages/doctor/LabTestDetailPage.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -14,16 +13,16 @@ import {
   Typography,
   Divider,
   Alert,
+  Space,
 } from "antd";
 import {
   ArrowLeftOutlined,
-  EditOutlined,
-  SaveOutlined,
   UserOutlined,
   CalendarOutlined,
   ExperimentOutlined,
   FileTextOutlined,
-} from "lucide-react";
+  EditOutlined,
+} from "@ant-design/icons";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import moment from "moment";
@@ -41,13 +40,20 @@ const LabTestDetailPage = () => {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    if (user && user.role === "doctor") {
-      fetchTestDetails();
-    } else {
-      message.error("Unauthorized access");
+    if (!user) {
+      message.error("Please log in to access this page");
       navigate("/login");
+      return;
     }
-  }, [user, testId]);
+
+    if (user.role !== "doctor") {
+      message.error("Unauthorized access");
+      navigate("/");
+      return;
+    }
+
+    fetchTestDetails();
+  }, [user, testId, navigate]);
 
   const fetchTestDetails = async () => {
     try {
@@ -57,20 +63,20 @@ const LabTestDetailPage = () => {
         .select(
           `
           *,
-          patient_id (
+          patient_id:patients (
             id,
             first_name,
             last_name,
             date_of_birth,
             gender
           ),
-          appointment_id (
+          appointment_id:appointments (
             id,
             date,
             time,
             type
           ),
-          assigned_to (
+          assigned_to:users (
             id,
             name,
             role
@@ -83,14 +89,15 @@ const LabTestDetailPage = () => {
       if (error) throw error;
       if (!data) throw new Error("Test not found");
 
-      // Verify if this test belongs to the doctor's appointment
       const { data: appointment, error: appError } = await supabase
         .from("appointments")
         .select("doctor_id")
         .eq("id", data.appointment_id.id)
         .single();
 
-      if (appError || appointment.doctor_id !== user.id) {
+      if (appError) throw appError;
+
+      if (appointment.doctor_id !== user.id) {
         throw new Error("Unauthorized to view this test");
       }
 
@@ -104,44 +111,22 @@ const LabTestDetailPage = () => {
     }
   };
 
-  const handleEditResults = () => {
-    form.setFieldsValue({
-      results: testData.results,
-      notes: testData.notes,
-    });
-    setEditModalVisible(true);
-  };
-
-  const handleSaveChanges = async (values) => {
-    try {
-      const { error } = await supabase
-        .from("lab_tests")
-        .update({
-          results: values.results,
-          notes: values.notes,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", testId);
-
-      if (error) throw error;
-      message.success("Test details updated successfully");
-      setEditModalVisible(false);
-      fetchTestDetails();
-    } catch (error) {
-      console.error("Error updating test:", error);
-      message.error("Failed to update test details");
-    }
-  };
-
   const getStatusColor = (status) => {
     switch (status) {
       case "pending":
         return "orange";
       case "completed":
         return "green";
+      case "cancelled":
+        return "red";
       default:
         return "gray";
     }
+  };
+
+  const canEditTest = () => {
+    // Doctors cannot edit lab results, only lab technicians can
+    return false;
   };
 
   if (loading) {
@@ -155,7 +140,20 @@ const LabTestDetailPage = () => {
   if (!testData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Alert message="Test not found" type="error" showIcon />
+        <Alert
+          message="Test not found"
+          description="The requested lab test could not be found or you don't have permission to view it."
+          type="error"
+          showIcon
+          action={
+            <Button
+              type="primary"
+              onClick={() => navigate("/doctor/lab-results")}
+            >
+              Back to Lab Results
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -207,7 +205,7 @@ const LabTestDetailPage = () => {
             </Descriptions.Item>
             <Descriptions.Item label="Assigned To">
               {testData.assigned_to?.name || "Unassigned"} (
-              {testData.assigned_to?.role})
+              {testData.assigned_to?.role || "N/A"})
             </Descriptions.Item>
             <Descriptions.Item label="Created At">
               {moment(testData.created_at).format("MMM DD, YYYY HH:mm")}
@@ -221,50 +219,58 @@ const LabTestDetailPage = () => {
 
           <Divider />
 
-          <Title level={4}>Results</Title>
+          <Title level={4}>
+            <FileTextOutlined className="mr-2" />
+            Results
+          </Title>
           {testData.results ? (
-            <Text>{testData.results}</Text>
+            <div className="bg-gray-50 p-4 rounded-md">
+              <Text>{testData.results}</Text>
+            </div>
           ) : (
             <Text type="secondary">No results available yet.</Text>
           )}
 
           <Divider />
 
-          <Title level={4}>Notes</Title>
+          <Title level={4}>
+            <FileTextOutlined className="mr-2" />
+            Notes
+          </Title>
           {testData.notes ? (
-            <Text>{testData.notes}</Text>
+            <div className="bg-gray-50 p-4 rounded-md">
+              <Text>{testData.notes}</Text>
+            </div>
           ) : (
             <Text type="secondary">No notes.</Text>
           )}
 
           <Divider />
 
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={handleEditResults}
-          >
-            Edit Results & Notes
-          </Button>
+          {canEditTest() && (
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() => setEditModalVisible(true)}
+            >
+              Edit Results & Notes
+            </Button>
+          )}
         </Card>
 
         <Modal
           title="Edit Lab Test Details"
-          visible={editModalVisible}
+          open={editModalVisible}
           onCancel={() => setEditModalVisible(false)}
           footer={null}
+          destroyOnClose
         >
-          <Form form={form} layout="vertical" onFinish={handleSaveChanges}>
-            <Form.Item name="results" label="Results">
-              <TextArea rows={6} placeholder="Enter detailed lab results" />
-            </Form.Item>
-            <Form.Item name="notes" label="Notes">
-              <TextArea rows={4} placeholder="Additional notes" />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" icon={<SaveOutlined />}>
-              Save Changes
-            </Button>
-          </Form>
+          <Alert
+            message="Permission Denied"
+            description="Doctors are not allowed to edit lab results. Please contact a lab technician for modifications."
+            type="error"
+            showIcon
+          />
         </Modal>
       </div>
     </div>

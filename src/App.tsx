@@ -20,10 +20,13 @@ import PatientDetail from "./components/Patients/PatientDetail";
 import ProfileSettings from "./components/Settings/ProfileSettings";
 import PatientManagement from "./components/Appointments/PatientManagement";
 import LaboratoryTestDetail from "./components/Laboratory/tests/LaboratoryTestDetail";
+import DoctorLabResultsPage from "./pages/doctor/DoctorLabResultsPage";
+import LabTestDetailPage from "./pages/doctor/LabTestDetailPage";
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+const ProtectedRoute: React.FC<{
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}> = ({ children, allowedRoles = [] }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -37,7 +40,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
     );
   }
 
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles.length && !allowedRoles.includes(user.role)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center text-red-600">
+          Unauthorized: You do not have permission to access this page.
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 };
 
 const AppRoutes: React.FC = () => {
@@ -86,6 +103,23 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route path="settings/:id" element={<ProfileSettings />} />
+        {/* New doctor-specific routes */}
+        <Route
+          path="doctor/lab-results"
+          element={
+            <ProtectedRoute allowedRoles={["doctor"]}>
+              <DoctorLabResultsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="doctor/lab-results/:testId"
+          element={
+            <ProtectedRoute allowedRoles={["doctor"]}>
+              <LabTestDetailPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="" element={<Navigate to="dashboard" replace />} />
       </Route>
     </Routes>

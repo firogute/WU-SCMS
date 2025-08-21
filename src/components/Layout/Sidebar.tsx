@@ -29,7 +29,6 @@ const Sidebar: React.FC = () => {
           ...baseItems,
           { icon: Users, label: "Patients", path: "/patients" },
           { icon: Calendar, label: "Appointments", path: "/appointments" },
-          { icon: Stethoscope, label: "Consultations", path: "/consultations" },
           { icon: Pill, label: "Pharmacy", path: "/pharmacy" },
           { icon: TestTube, label: "Laboratory", path: "/laboratory" },
           { icon: FileText, label: "Reports", path: "/reports" },
@@ -41,7 +40,7 @@ const Sidebar: React.FC = () => {
           ...baseItems,
           { icon: Users, label: "Patients", path: "/patients" },
           { icon: Calendar, label: "Appointments", path: "/appointments" },
-          { icon: Stethoscope, label: "Consultations", path: "/consultations" },
+          { icon: TestTube, label: "Lab Results", path: "/doctor/lab-results" },
           { icon: FileText, label: "Reports", path: "/reports" },
         ];
       case "nurse":

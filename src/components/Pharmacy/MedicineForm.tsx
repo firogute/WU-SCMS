@@ -125,7 +125,7 @@ const MedicineForm: React.FC<MedicineFormProps> = ({
                   <X className="w-6 h-6" />
                 </button>
               </div>
-
+              5
               <div className="space-y-6">
                 {/* Basic Information */}
                 <div>

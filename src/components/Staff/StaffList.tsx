@@ -1,140 +1,90 @@
-import React, { useState } from 'react';
-import { Search, Plus, Filter, Download, MoreVertical, Eye, Edit, Trash2, UserCheck, Shield, Clock } from 'lucide-react';
-import { Staff } from '../../types';
-import StaffForm from './StaffForm';
-import Button from '../UI/Button';
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  Plus,
+  Filter,
+  Download,
+  MoreVertical,
+  Eye,
+  Edit,
+  Trash2,
+  UserCheck,
+  Shield,
+  Clock,
+} from "lucide-react";
+import { Staff } from "../../types";
+import StaffForm from "./StaffForm";
+import Button from "../UI/Button";
+import { supabase } from "../../lib/supabase";
 
 const StaffList: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [showStaffForm, setShowStaffForm] = useState(false);
-  const [editingStaff, setEditingStaff] = useState<Staff | undefined>(undefined);
-  const [filterRole, setFilterRole] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [staff, setStaff] = useState<Staff[]>([
-    {
-      id: '1',
-      fullName: 'Dr. Sarah Johnson',
-      role: 'admin',
-      department: 'Administration',
-      email: 'admin@wollega.edu.et',
-      phone: '+251-911-123456',
-      gender: 'female',
-      employeeId: 'EMP-0001',
-      joinDate: '2023-01-15',
-      username: 'sarahjohnson',
-      shift: 'full-time',
-      status: 'active',
-      accessRole: 'admin',
-      address: '123 University Ave, Nekemte',
-      emergencyContact: '+251-911-654321',
-      qualifications: ['MD', 'MBA Healthcare Management', 'Board Certified'],
-      specialization: 'Healthcare Administration'
-    },
-    {
-      id: '2',
-      fullName: 'Dr. Michael Brown',
-      role: 'doctor',
-      department: 'General Medicine',
-      email: 'doctor@wollega.edu.et',
-      phone: '+251-911-789012',
-      gender: 'male',
-      employeeId: 'EMP-0002',
-      joinDate: '2023-02-20',
-      username: 'michaelbrown',
-      shift: 'morning',
-      status: 'active',
-      accessRole: 'doctor',
-      address: '456 Medical St, Nekemte',
-      emergencyContact: '+251-911-987654',
-      qualifications: ['MD', 'Internal Medicine Residency', 'ACLS Certified'],
-      specialization: 'General Practice'
-    },
-    {
-      id: '3',
-      fullName: 'Mary Wilson',
-      role: 'nurse',
-      department: 'General Care',
-      email: 'nurse@wollega.edu.et',
-      phone: '+251-911-345678',
-      gender: 'female',
-      employeeId: 'EMP-0003',
-      joinDate: '2023-03-10',
-      username: 'marywilson',
-      shift: 'morning',
-      status: 'active',
-      accessRole: 'nurse',
-      address: '789 Care Lane, Nekemte',
-      emergencyContact: '+251-911-876543',
-      qualifications: ['BSN', 'RN License', 'BLS Certified'],
-      specialization: 'General Nursing'
-    },
-    {
-      id: '4',
-      fullName: 'John Davis',
-      role: 'pharmacist',
-      department: 'Pharmacy',
-      email: 'pharmacist@wollega.edu.et',
-      phone: '+251-911-567890',
-      gender: 'male',
-      employeeId: 'EMP-0004',
-      joinDate: '2023-04-05',
-      username: 'johndavis',
-      shift: 'full-time',
-      status: 'active',
-      accessRole: 'pharmacist',
-      address: '321 Pharmacy Rd, Nekemte',
-      emergencyContact: '+251-911-098765',
-      qualifications: ['PharmD', 'Licensed Pharmacist', 'Clinical Pharmacy Certified'],
-      specialization: 'Clinical Pharmacy'
-    },
-    {
-      id: '5',
-      fullName: 'Lisa Anderson',
-      role: 'receptionist',
-      department: 'Reception',
-      email: 'receptionist@wollega.edu.et',
-      phone: '+251-911-234567',
-      gender: 'female',
-      employeeId: 'EMP-0005',
-      joinDate: '2023-05-12',
-      username: 'lisaanderson',
-      shift: 'morning',
-      status: 'active',
-      accessRole: 'receptionist',
-      address: '654 Front Desk Ave, Nekemte',
-      emergencyContact: '+251-911-765432',
-      qualifications: ['Diploma in Office Administration', 'Customer Service Certified'],
-      specialization: 'Patient Services'
-    },
-    {
-      id: '6',
-      fullName: 'Dr. Emily Davis',
-      role: 'doctor',
-      department: 'Pediatrics',
-      email: 'emily.davis@wollega.edu.et',
-      phone: '+251-911-890123',
-      gender: 'female',
-      employeeId: 'EMP-0006',
-      joinDate: '2023-06-18',
-      username: 'emilydavis',
-      shift: 'evening',
-      status: 'on-leave',
-      accessRole: 'doctor',
-      address: '987 Pediatric Way, Nekemte',
-      emergencyContact: '+251-911-543210',
-      qualifications: ['MD', 'Pediatrics Residency', 'PALS Certified'],
-      specialization: 'Pediatrics'
-    }
-  ]);
+  const [editingStaff, setEditingStaff] = useState<Staff | undefined>(
+    undefined
+  );
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredStaff = staff.filter(member => {
-    const matchesSearch = member.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.department.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === 'all' || member.role === filterRole;
-    const matchesStatus = filterStatus === 'all' || member.status === filterStatus;
+  // Fetch staff from Supabase
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          // Transform Supabase data to match our Staff type
+          const staffData: Staff[] = data.map((user) => ({
+            id: user.id,
+            fullName: user.name,
+            role: user.role,
+            department: user.department || "",
+            email: user.email,
+            phone: user.phone || "",
+            gender: user.gender || "other",
+            employeeId: user.employee_id || `EMP-${user.id.slice(0, 8)}`,
+            joinDate: user.created_at.split("T")[0],
+            username: user.username || user.email.split("@")[0],
+            shift: user.shift || "full-time",
+            status: user.status || "active",
+            accessRole: user.role,
+            address: user.address || "",
+            emergencyContact: user.emergency_contact || "",
+            qualifications: user.qualifications || [],
+            specialization: user.specialization || "",
+          }));
+          setStaff(staffData);
+        }
+      } catch (error) {
+        console.error("Error fetching staff:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStaff();
+  }, []);
+
+  const filteredStaff = staff.filter((member) => {
+    const matchesSearch =
+      member.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (member.department &&
+        member.department.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesRole = filterRole === "all" || member.role === filterRole;
+    const matchesStatus =
+      filterStatus === "all" || member.status === filterStatus;
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -149,74 +99,215 @@ const StaffList: React.FC = () => {
     setSelectedStaff(null);
   };
 
-  const handleDeleteStaff = (staffId: string) => {
-    if (window.confirm('Are you sure you want to delete this staff member?')) {
-      setStaff(prev => prev.filter(s => s.id !== staffId));
-      setSelectedStaff(null);
+  const handleDeleteStaff = async (staffId: string) => {
+    if (window.confirm("Are you sure you want to delete this staff member?")) {
+      try {
+        const { error } = await supabase
+          .from("users")
+          .delete()
+          .eq("id", staffId);
+
+        if (error) {
+          throw error;
+        }
+
+        setStaff((prev) => prev.filter((s) => s.id !== staffId));
+        setSelectedStaff(null);
+      } catch (error) {
+        console.error("Error deleting staff:", error);
+        alert("Error deleting staff member");
+      }
     }
   };
 
-  const handleSaveStaff = (staffData: Partial<Staff>) => {
-    if (editingStaff) {
-      // Update existing staff
-      setStaff(prev => prev.map(s => 
-        s.id === editingStaff.id 
-          ? { ...s, ...staffData } as Staff
-          : s
-      ));
-    } else {
-      // Add new staff
-      const newStaff: Staff = {
-        ...staffData,
-        id: Date.now().toString()
-      } as Staff;
-      setStaff(prev => [...prev, newStaff]);
+  const handleSaveStaff = async (staffData: Partial<Staff>) => {
+    try {
+      if (editingStaff) {
+        // Update existing staff in Supabase
+        const { data, error } = await supabase
+          .from("users")
+          .update({
+            name: staffData.fullName,
+            email: staffData.email,
+            role: staffData.role,
+            department: staffData.department,
+            phone: staffData.phone,
+            gender: staffData.gender,
+            employee_id: staffData.employeeId,
+            username: staffData.username,
+            shift: staffData.shift,
+            status: staffData.status,
+            address: staffData.address,
+            emergency_contact: staffData.emergencyContact,
+            qualifications: staffData.qualifications,
+            specialization: staffData.specialization,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", editingStaff.id)
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data[0]) {
+          // Update local state
+          const updatedStaff = data[0];
+          setStaff((prev) =>
+            prev.map((s) =>
+              s.id === editingStaff.id
+                ? {
+                    ...s,
+                    fullName: updatedStaff.name,
+                    email: updatedStaff.email,
+                    role: updatedStaff.role,
+                    department: updatedStaff.department || "",
+                    phone: updatedStaff.phone || "",
+                    gender: updatedStaff.gender || "other",
+                    employeeId:
+                      updatedStaff.employee_id ||
+                      `EMP-${updatedStaff.id.slice(0, 8)}`,
+                    username:
+                      updatedStaff.username || updatedStaff.email.split("@")[0],
+                    shift: updatedStaff.shift || "full-time",
+                    status: updatedStaff.status || "active",
+                    address: updatedStaff.address || "",
+                    emergencyContact: updatedStaff.emergency_contact || "",
+                    qualifications: updatedStaff.qualifications || [],
+                    specialization: updatedStaff.specialization || "",
+                  }
+                : s
+            )
+          );
+        }
+      } else {
+        // Add new staff to Supabase
+        const { data, error } = await supabase
+          .from("users")
+          .insert({
+            name: staffData.fullName,
+            email: staffData.email,
+            role: staffData.role,
+            department: staffData.department,
+            phone: staffData.phone,
+            gender: staffData.gender,
+            employee_id: staffData.employeeId,
+            username: staffData.username,
+            shift: staffData.shift,
+            status: staffData.status,
+            address: staffData.address,
+            emergency_contact: staffData.emergencyContact,
+            qualifications: staffData.qualifications,
+            specialization: staffData.specialization,
+            password: "temp123", // Temporary password, should be changed by user
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data[0]) {
+          const newStaff: Staff = {
+            id: data[0].id,
+            fullName: data[0].name,
+            role: data[0].role,
+            department: data[0].department || "",
+            email: data[0].email,
+            phone: data[0].phone || "",
+            gender: data[0].gender || "other",
+            employeeId: data[0].employee_id || `EMP-${data[0].id.slice(0, 8)}`,
+            joinDate: data[0].created_at.split("T")[0],
+            username: data[0].username || data[0].email.split("@")[0],
+            shift: data[0].shift || "full-time",
+            status: data[0].status || "active",
+            accessRole: data[0].role,
+            address: data[0].address || "",
+            emergencyContact: data[0].emergency_contact || "",
+            qualifications: data[0].qualifications || [],
+            specialization: data[0].specialization || "",
+          };
+          setStaff((prev) => [...prev, newStaff]);
+        }
+      }
+      setShowStaffForm(false);
+    } catch (error) {
+      console.error("Error saving staff:", error);
+      alert("Error saving staff member");
     }
-    setShowStaffForm(false);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      case 'on-leave': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "inactive":
+        return "bg-gray-100 text-gray-800";
+      case "on-leave":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'admin': return 'bg-purple-100 text-purple-800';
-      case 'doctor': return 'bg-blue-100 text-blue-800';
-      case 'nurse': return 'bg-green-100 text-green-800';
-      case 'pharmacist': return 'bg-orange-100 text-orange-800';
-      case 'receptionist': return 'bg-pink-100 text-pink-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "admin":
+        return "bg-purple-100 text-purple-800";
+      case "doctor":
+        return "bg-blue-100 text-blue-800";
+      case "nurse":
+        return "bg-green-100 text-green-800";
+      case "pharmacist":
+        return "bg-orange-100 text-orange-800";
+      case "receptionist":
+        return "bg-pink-100 text-pink-800";
+      case "laboratory":
+        return "bg-indigo-100 text-indigo-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getShiftIcon = (shift: string) => {
     switch (shift) {
-      case 'morning': return '🌅';
-      case 'evening': return '🌆';
-      case 'night': return '🌙';
-      case 'full-time': return '⏰';
-      default: return '⏰';
+      case "morning":
+        return "🌅";
+      case "evening":
+        return "🌆";
+      case "night":
+        return "🌙";
+      case "full-time":
+        return "⏰";
+      default:
+        return "⏰";
     }
   };
 
-  const exportStaffData = (format: 'csv' | 'pdf') => {
+  const exportStaffData = (format: "csv" | "pdf") => {
     alert(`Exporting staff data as ${format.toUpperCase()}...`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Staff Management</h1>
-          <p className="text-gray-600">Manage clinic staff members and their information</p>
+          <p className="text-gray-600">
+            Manage clinic staff members and their information
+          </p>
         </div>
-        <Button onClick={handleAddStaff} icon={Plus}>
+        <Button onClick={handleAddStaff} icon={<Plus />}>
           Add Staff Member
         </Button>
       </div>
@@ -238,7 +329,7 @@ const StaffList: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Active Staff</p>
               <p className="text-2xl font-bold text-green-600">
-                {staff.filter(s => s.status === 'active').length}
+                {staff.filter((s) => s.status === "active").length}
               </p>
             </div>
             <Shield className="w-8 h-8 text-green-600" />
@@ -250,7 +341,7 @@ const StaffList: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">On Leave</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {staff.filter(s => s.status === 'on-leave').length}
+                {staff.filter((s) => s.status === "on-leave").length}
               </p>
             </div>
             <Clock className="w-8 h-8 text-yellow-600" />
@@ -262,7 +353,11 @@ const StaffList: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Departments</p>
               <p className="text-2xl font-bold text-purple-600">
-                {new Set(staff.map(s => s.department)).size}
+                {
+                  new Set(
+                    staff.filter((s) => s.department).map((s) => s.department)
+                  ).size
+                }
               </p>
             </div>
             <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
@@ -297,6 +392,7 @@ const StaffList: React.FC = () => {
                 <option value="nurse">Nurse</option>
                 <option value="pharmacist">Pharmacist</option>
                 <option value="receptionist">Receptionist</option>
+                <option value="laboratory">Laboratory</option>
               </select>
               <select
                 value={filterStatus}
@@ -310,15 +406,15 @@ const StaffList: React.FC = () => {
               </select>
             </div>
             <div className="flex items-center space-x-3">
-              <button 
-                onClick={() => exportStaffData('csv')}
+              <button
+                onClick={() => exportStaffData("csv")}
                 className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <Download className="w-4 h-4" />
                 <span>CSV</span>
               </button>
-              <button 
-                onClick={() => exportStaffData('pdf')}
+              <button
+                onClick={() => exportStaffData("pdf")}
                 className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <Download className="w-4 h-4" />
@@ -359,38 +455,63 @@ const StaffList: React.FC = () => {
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                         <span className="font-medium text-blue-600">
-                          {staffMember.fullName.split(' ').map(n => n[0]).join('')}
+                          {staffMember.fullName
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
                         </span>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{staffMember.fullName}</div>
-                        <div className="text-sm text-gray-500">ID: {staffMember.employeeId}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {staffMember.fullName}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          ID: {staffMember.employeeId}
+                        </div>
                         {staffMember.specialization && (
-                          <div className="text-xs text-gray-400">{staffMember.specialization}</div>
+                          <div className="text-xs text-gray-400">
+                            {staffMember.specialization}
+                          </div>
                         )}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="space-y-1">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(staffMember.role)}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(
+                          staffMember.role
+                        )}`}
+                      >
                         {staffMember.role}
                       </span>
-                      <div className="text-sm text-gray-600">{staffMember.department}</div>
+                      <div className="text-sm text-gray-600">
+                        {staffMember.department || "No department"}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{staffMember.email}</div>
-                    <div className="text-sm text-gray-500">{staffMember.phone}</div>
+                    <div className="text-sm text-gray-900">
+                      {staffMember.email}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {staffMember.phone || "No phone"}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="space-y-1">
                       <div className="flex items-center text-sm text-gray-600">
-                        <span className="mr-1">{getShiftIcon(staffMember.shift)}</span>
-                        {staffMember.shift.replace('-', ' ')}
+                        <span className="mr-1">
+                          {getShiftIcon(staffMember.shift)}
+                        </span>
+                        {staffMember.shift.replace("-", " ")}
                       </div>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(staffMember.status)}`}>
-                        {staffMember.status.replace('-', ' ')}
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                          staffMember.status
+                        )}`}
+                      >
+                        {staffMember.status.replace("-", " ")}
                       </span>
                     </div>
                   </td>
@@ -400,7 +521,13 @@ const StaffList: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="relative">
                       <button
-                        onClick={() => setSelectedStaff(selectedStaff === staffMember.id ? null : staffMember.id)}
+                        onClick={() =>
+                          setSelectedStaff(
+                            selectedStaff === staffMember.id
+                              ? null
+                              : staffMember.id
+                          )
+                        }
                         className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
                       >
                         <MoreVertical className="w-4 h-4" />
@@ -408,21 +535,23 @@ const StaffList: React.FC = () => {
                       {selectedStaff === staffMember.id && (
                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                           <div className="py-1">
-                            <button 
-                              onClick={() => {/* View staff details */}}
+                            <button
+                              onClick={() => {
+                                /* View staff details */
+                              }}
                               className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                             >
                               <Eye className="w-4 h-4 mr-3" />
                               View Details
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleEditStaff(staffMember)}
                               className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                             >
                               <Edit className="w-4 h-4 mr-3" />
                               Edit Staff
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleDeleteStaff(staffMember.id)}
                               className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
                             >
@@ -440,18 +569,32 @@ const StaffList: React.FC = () => {
           </table>
         </div>
 
+        {filteredStaff.length === 0 && (
+          <div className="px-6 py-8 text-center">
+            <p className="text-gray-500">No staff members found</p>
+          </div>
+        )}
+
         <div className="px-6 py-4 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center text-sm text-gray-700">
-              Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredStaff.length}</span> of{' '}
+              Showing <span className="font-medium">1</span> to{" "}
+              <span className="font-medium">{filteredStaff.length}</span> of{" "}
               <span className="font-medium">{staff.length}</span> results
             </div>
             <div className="flex items-center space-x-2">
-              <button className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50" disabled>
+              <button
+                className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                disabled
+              >
                 Previous
               </button>
-              <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded">1</button>
-              <button className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">2</button>
+              <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded">
+                1
+              </button>
+              <button className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">
+                2
+              </button>
               <button className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">
                 Next
               </button>

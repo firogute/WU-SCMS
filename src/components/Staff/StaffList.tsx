@@ -16,23 +16,24 @@ import { Staff } from "../../types";
 import StaffForm from "./StaffForm";
 import Button from "../UI/Button";
 import { supabase } from "../../lib/supabase";
+import { useNavigate } from "react-router-dom";
 
 const StaffList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [showStaffForm, setShowStaffForm] = useState(false);
-  const [editingStaff, setEditingStaff] = useState<Staff | undefined>(
-    undefined
-  );
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Fetch staff from Supabase
   useEffect(() => {
     const fetchStaff = async () => {
       try {
+        setError(null);
         const { data, error } = await supabase
           .from("users")
           .select("*")
@@ -43,7 +44,7 @@ const StaffList: React.FC = () => {
         }
 
         if (data) {
-          // Transform Supabase data to match our Staff type
+          // Transform Supabase data to match our Staff type (no username)
           const staffData: Staff[] = data.map((user) => ({
             id: user.id,
             fullName: user.name,
@@ -54,7 +55,6 @@ const StaffList: React.FC = () => {
             gender: user.gender || "other",
             employeeId: user.employee_id || `EMP-${user.id.slice(0, 8)}`,
             joinDate: user.created_at.split("T")[0],
-            username: user.username || user.email.split("@")[0],
             shift: user.shift || "full-time",
             status: user.status || "active",
             accessRole: user.role,
@@ -65,8 +65,9 @@ const StaffList: React.FC = () => {
           }));
           setStaff(staffData);
         }
-      } catch (error) {
-        console.error("Error fetching staff:", error);
+      } catch (err) {
+        console.error("Error fetching staff:", err);
+        setError("Failed to load staff data. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -89,13 +90,16 @@ const StaffList: React.FC = () => {
   });
 
   const handleAddStaff = () => {
-    setEditingStaff(undefined);
     setShowStaffForm(true);
   };
 
   const handleEditStaff = (staffMember: Staff) => {
-    setEditingStaff(staffMember);
-    setShowStaffForm(true);
+    navigate(`/staff/${staffMember.id}?mode=edit`);
+    setSelectedStaff(null);
+  };
+
+  const handleViewStaff = (staffMember: Staff) => {
+    navigate(`/staff/${staffMember.id}`);
     setSelectedStaff(null);
   };
 
@@ -122,115 +126,53 @@ const StaffList: React.FC = () => {
 
   const handleSaveStaff = async (staffData: Partial<Staff>) => {
     try {
-      if (editingStaff) {
-        // Update existing staff in Supabase
-        const { data, error } = await supabase
-          .from("users")
-          .update({
-            name: staffData.fullName,
-            email: staffData.email,
-            role: staffData.role,
-            department: staffData.department,
-            phone: staffData.phone,
-            gender: staffData.gender,
-            employee_id: staffData.employeeId,
-            username: staffData.username,
-            shift: staffData.shift,
-            status: staffData.status,
-            address: staffData.address,
-            emergency_contact: staffData.emergencyContact,
-            qualifications: staffData.qualifications,
-            specialization: staffData.specialization,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", editingStaff.id)
-          .select();
+      // Add new staff to Supabase (for create mode in modal)
+      const { data, error } = await supabase
+        .from("users")
+        .insert({
+          name: staffData.fullName,
+          email: staffData.email,
+          role: staffData.role,
+          department: staffData.department,
+          phone: staffData.phone,
+          gender: staffData.gender,
+          employee_id: staffData.employeeId,
+          shift: staffData.shift,
+          status: staffData.status,
+          address: staffData.address,
+          emergency_contact: staffData.emergencyContact,
+          qualifications: staffData.qualifications,
+          specialization: staffData.specialization,
+          password: staffData.password || "password123", // Default password for new users
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select();
 
-        if (error) {
-          throw error;
-        }
+      if (error) {
+        throw error;
+      }
 
-        if (data && data[0]) {
-          // Update local state
-          const updatedStaff = data[0];
-          setStaff((prev) =>
-            prev.map((s) =>
-              s.id === editingStaff.id
-                ? {
-                    ...s,
-                    fullName: updatedStaff.name,
-                    email: updatedStaff.email,
-                    role: updatedStaff.role,
-                    department: updatedStaff.department || "",
-                    phone: updatedStaff.phone || "",
-                    gender: updatedStaff.gender || "other",
-                    employeeId:
-                      updatedStaff.employee_id ||
-                      `EMP-${updatedStaff.id.slice(0, 8)}`,
-                    username:
-                      updatedStaff.username || updatedStaff.email.split("@")[0],
-                    shift: updatedStaff.shift || "full-time",
-                    status: updatedStaff.status || "active",
-                    address: updatedStaff.address || "",
-                    emergencyContact: updatedStaff.emergency_contact || "",
-                    qualifications: updatedStaff.qualifications || [],
-                    specialization: updatedStaff.specialization || "",
-                  }
-                : s
-            )
-          );
-        }
-      } else {
-        // Add new staff to Supabase
-        const { data, error } = await supabase
-          .from("users")
-          .insert({
-            name: staffData.fullName,
-            email: staffData.email,
-            role: staffData.role,
-            department: staffData.department,
-            phone: staffData.phone,
-            gender: staffData.gender,
-            employee_id: staffData.employeeId,
-            username: staffData.username,
-            shift: staffData.shift,
-            status: staffData.status,
-            address: staffData.address,
-            emergency_contact: staffData.emergencyContact,
-            qualifications: staffData.qualifications,
-            specialization: staffData.specialization,
-            password: "temp123", // Temporary password, should be changed by user
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .select();
-
-        if (error) {
-          throw error;
-        }
-
-        if (data && data[0]) {
-          const newStaff: Staff = {
-            id: data[0].id,
-            fullName: data[0].name,
-            role: data[0].role,
-            department: data[0].department || "",
-            email: data[0].email,
-            phone: data[0].phone || "",
-            gender: data[0].gender || "other",
-            employeeId: data[0].employee_id || `EMP-${data[0].id.slice(0, 8)}`,
-            joinDate: data[0].created_at.split("T")[0],
-            username: data[0].username || data[0].email.split("@")[0],
-            shift: data[0].shift || "full-time",
-            status: data[0].status || "active",
-            accessRole: data[0].role,
-            address: data[0].address || "",
-            emergencyContact: data[0].emergency_contact || "",
-            qualifications: data[0].qualifications || [],
-            specialization: data[0].specialization || "",
-          };
-          setStaff((prev) => [...prev, newStaff]);
-        }
+      if (data && data[0]) {
+        const newStaff: Staff = {
+          id: data[0].id,
+          fullName: data[0].name,
+          role: data[0].role,
+          department: data[0].department || "",
+          email: data[0].email,
+          phone: data[0].phone || "",
+          gender: data[0].gender || "other",
+          employeeId: data[0].employee_id || `EMP-${data[0].id.slice(0, 8)}`,
+          joinDate: data[0].created_at.split("T")[0],
+          shift: data[0].shift || "full-time",
+          status: data[0].status || "active",
+          accessRole: data[0].role,
+          address: data[0].address || "",
+          emergencyContact: data[0].emergency_contact || "",
+          qualifications: data[0].qualifications || [],
+          specialization: data[0].specialization || "",
+        };
+        setStaff((prev) => [...prev, newStaff]);
       }
       setShowStaffForm(false);
     } catch (error) {
@@ -296,6 +238,10 @@ const StaffList: React.FC = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  if (error) {
+    return <div className="text-red-600 text-center">{error}</div>;
   }
 
   return (
@@ -536,9 +482,7 @@ const StaffList: React.FC = () => {
                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                           <div className="py-1">
                             <button
-                              onClick={() => {
-                                /* View staff details */
-                              }}
+                              onClick={() => handleViewStaff(staffMember)}
                               className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                             >
                               <Eye className="w-4 h-4 mr-3" />
@@ -604,10 +548,10 @@ const StaffList: React.FC = () => {
       </div>
 
       <StaffForm
-        staff={editingStaff}
         isOpen={showStaffForm}
         onClose={() => setShowStaffForm(false)}
         onSave={handleSaveStaff}
+        mode="create"
       />
     </div>
   );

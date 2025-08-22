@@ -22,6 +22,7 @@ import PatientManagement from "./components/Appointments/PatientManagement";
 import LaboratoryTestDetail from "./components/Laboratory/tests/LaboratoryTestDetail";
 import DoctorLabResultsPage from "./pages/doctor/DoctorLabResultsPage";
 import LabTestDetailPage from "./pages/doctor/LabTestDetailPage";
+import StaffDetail from "./components/Staff/StaffDetail";
 
 const ProtectedRoute: React.FC<{
   children: React.ReactNode;
@@ -86,6 +87,7 @@ const AppRoutes: React.FC = () => {
         />
         <Route path="reports" element={<ReportsModule />} />
         <Route path="staff" element={<StaffList />} />
+        <Route path="staff/:id" element={<StaffDetail />} />
         <Route
           path="vitals"
           element={

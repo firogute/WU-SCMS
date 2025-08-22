@@ -49,7 +49,7 @@ const StaffDetail: React.FC = () => {
   const [newQualification, setNewQualification] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [resetPassword, setResetPassword] = useState(false);
-  const [tempPassword, setTempPassword] = useState("");
+  const [tempPassword, setTempPassword] = useState("password123");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -916,7 +916,7 @@ const StaffDetail: React.FC = () => {
                             <Button
                               type="button"
                               variant="outline"
-                              onClick={() => setResetPassword(false)}
+                              onClick={() => setResetPassword(true)}
                               size="sm"
                             >
                               Cancel
@@ -949,7 +949,6 @@ const StaffDetail: React.FC = () => {
                           type="button"
                           onClick={() => {
                             setResetPassword(true);
-                            generateRandomPassword();
                           }}
                           icon={<Key />}
                           variant="outline"

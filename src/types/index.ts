@@ -115,3 +115,20 @@ export interface Staff {
   qualifications?: string[];
   specialization?: string;
 }
+
+export interface MedicalRecord {
+  id: string;
+  patient_id: string;
+  doctor_id: string;
+  appointment_id: string;
+  date: string;
+  symptoms: string;
+  diagnosis: string;
+  treatment: string;
+  follow_up_date?: string;
+  notes: string;
+  lab_results?: any; // jsonb in schema, so using any for flexibility
+  vital_signs?: any; // jsonb in schema, so using any for flexibility
+  created_at: string;
+  updated_at: string;
+}

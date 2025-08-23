@@ -1,16 +1,10 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable"; // Explicit import
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import {
-  Patient,
-  Appointment,
-  Medicine,
-  Consultation,
-  Prescription,
-} from "../types";
+import { Patient, Prescription, MedicalRecord } from "../types";
 
-// Extend jsPDF type to include autoTable
+// Apply autoTable to jsPDF
 declare module "jspdf" {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
@@ -21,7 +15,7 @@ export const exportToPDF = (
   data: any[],
   filename: string,
   title: string,
-  columns: any[]
+  columns: { header: string; accessor: (item: any) => any }[]
 ) => {
   const doc = new jsPDF();
 
@@ -33,8 +27,8 @@ export const exportToPDF = (
   doc.setFontSize(12);
   doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 32);
 
-  // Add table
-  doc.autoTable({
+  // Add table using autoTable
+  autoTable(doc, {
     head: [columns.map((col) => col.header)],
     body: data.map((item) => columns.map((col) => col.accessor(item))),
     startY: 40,
@@ -51,7 +45,11 @@ export const exportToPDF = (
   doc.save(`${filename}.pdf`);
 };
 
-export const exportToCSV = (data: any[], filename: string, columns: any[]) => {
+export const exportToCSV = (
+  data: any[],
+  filename: string,
+  columns: { header: string; accessor: (item: any) => any }[]
+) => {
   const headers = columns.map((col) => col.header).join(",");
   const rows = data.map((item) =>
     columns
@@ -72,7 +70,7 @@ export const exportToCSV = (data: any[], filename: string, columns: any[]) => {
 export const exportToExcel = (
   data: any[],
   filename: string,
-  columns: any[]
+  columns: { header: string; accessor: (item: any) => any }[]
 ) => {
   const worksheet = XLSX.utils.json_to_sheet(
     data.map((item) => {
@@ -94,9 +92,12 @@ export const generatePrescriptionPDF = (
   patient: Patient,
   doctor: string,
   prescriptions: Prescription[],
-  consultation: Consultation
+  medicalRecord: MedicalRecord
 ) => {
   const doc = new jsPDF();
+
+  // Apply autoTable to this instance
+  autoTable(doc, {});
 
   // Header
   doc.setFontSize(24);
@@ -124,10 +125,10 @@ export const generatePrescriptionPDF = (
   doc.text("Patient Information:", 14, 70);
 
   doc.setFont("helvetica", "normal");
-  doc.text(`Name: ${patient.firstName} ${patient.lastName}`, 14, 78);
+  doc.text(`Name: ${patient.first_name} ${patient.last_name}`, 14, 78);
   doc.text(
     `Age: ${
-      new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()
+      new Date().getFullYear() - new Date(patient.date_of_birth).getFullYear()
     } years`,
     14,
     86
@@ -137,12 +138,12 @@ export const generatePrescriptionPDF = (
 
   // Doctor information
   doc.text(
-    `Date: ${new Date(consultation.date).toLocaleDateString()}`,
+    `Date: ${new Date(medicalRecord.date).toLocaleDateString()}`,
     120,
     78
   );
   doc.text(`Doctor: ${doctor}`, 120, 86);
-  doc.text(`Diagnosis: ${consultation.diagnosis}`, 120, 94);
+  doc.text(`Diagnosis: ${medicalRecord.diagnosis}`, 120, 94);
 
   // Prescription table
   doc.setFont("helvetica", "bold");
@@ -150,14 +151,14 @@ export const generatePrescriptionPDF = (
 
   const prescriptionData = prescriptions.map((prescription, index) => [
     index + 1,
-    prescription.medicineName,
+    prescription.medicine_name,
     prescription.dosage,
     prescription.frequency,
     prescription.duration,
     prescription.instructions,
   ]);
 
-  doc.autoTable({
+  autoTable(doc, {
     head: [
       ["#", "Medicine", "Dosage", "Frequency", "Duration", "Instructions"],
     ],
@@ -205,7 +206,7 @@ export const generatePrescriptionPDF = (
 
   // Save the PDF
   doc.save(
-    `prescription_${patient.firstName}_${patient.lastName}_${
+    `prescription_${patient.first_name}_${patient.last_name}_${
       new Date().toISOString().split("T")[0]
     }.pdf`
   );

@@ -42,7 +42,6 @@ const Sidebar: React.FC = () => {
           { icon: Users, label: "Patients", path: "/patients" },
           { icon: Calendar, label: "Appointments", path: "/appointments" },
           { icon: TestTube, label: "Lab Results", path: "/doctor/lab-results" },
-          { icon: FileText, label: "Reports", path: "/reports" },
         ];
       case "nurse":
         return [
@@ -74,7 +73,6 @@ const Sidebar: React.FC = () => {
           ...baseItems,
           { icon: TestTube, label: "Laboratory", path: "/laboratory" },
           { icon: Users, label: "Patients", path: "/patients" },
-          { icon: FileText, label: "Reports", path: "/reports" },
         ];
       default:
         return baseItems;

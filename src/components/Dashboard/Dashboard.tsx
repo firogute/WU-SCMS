@@ -17,9 +17,14 @@ import {
   MoreHorizontal,
   Search,
   Filter,
+  Package,
+  ClipboardList,
+  Eye,
+  Truck,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
+import { Link } from "react-router-dom";
 
 interface Appointment {
   id: string;
@@ -81,6 +86,26 @@ interface NurseTask {
   };
 }
 
+interface Prescription {
+  id: string;
+  medicine_name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+  status: string;
+  created_at: string;
+  patients: {
+    first_name: string;
+    last_name: string;
+  };
+  medical_records: {
+    doctors: {
+      name: string;
+    };
+  };
+}
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -88,6 +113,7 @@ const Dashboard: React.FC = () => {
   const [labTests, setLabTests] = useState<LabTest[]>([]);
   const [medicineAlerts, setMedicineAlerts] = useState<MedicineAlert[]>([]);
   const [nurseTasks, setNurseTasks] = useState<NurseTask[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Update time every second
@@ -205,6 +231,60 @@ const Dashboard: React.FC = () => {
 
             setNurseTasks(nurseTasksData || []);
             break;
+          case "pharmacist":
+            // Fetch pending prescriptions
+            const { data: prescriptionsData, error } = await supabase
+              .from("prescriptions")
+              .select(
+                `
+    id,
+    medicine_name,
+    dosage,
+    frequency,
+    duration,
+    instructions,
+    status,
+    created_at,
+
+    medicines (
+      name,
+      generic_name,
+      manufacturer
+    ),
+
+    medical_records (
+      id,
+      diagnosis,
+      treatment,
+
+      patients!patient_id (
+        id,
+        first_name,
+        last_name,
+        email,
+        phone
+      ),
+
+      users!doctor_id (
+        id,
+        name,
+        email,
+        role,
+        specialization
+      )
+    )
+  `
+              )
+              .in("status", ["pending", "processing"])
+              .order("created_at", { ascending: true });
+
+            if (error) {
+              console.error(error);
+            } else {
+              setPrescriptions(prescriptionsData || []);
+            }
+
+            break;
 
           default:
             break;
@@ -233,6 +313,46 @@ const Dashboard: React.FC = () => {
     if (hour < 12) return "Good morning";
     if (hour < 17) return "Good afternoon";
     return "Good evening";
+  };
+
+  const getPrescriptionStatusColor = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "processing":
+        return "bg-blue-100 text-blue-800";
+      case "ready":
+        return "bg-green-100 text-green-800";
+      case "dispensed":
+        return "bg-purple-100 text-purple-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const updatePrescriptionStatus = async (
+    prescriptionId: string,
+    newStatus: string
+  ) => {
+    try {
+      const { error } = await supabase
+        .from("prescriptions")
+        .update({ status: newStatus })
+        .eq("id", prescriptionId);
+
+      if (error) throw error;
+
+      // Update local state
+      setPrescriptions((prev) =>
+        prev.map((p) =>
+          p.id === prescriptionId ? { ...p, status: newStatus } : p
+        )
+      );
+    } catch (error) {
+      console.error("Error updating prescription status:", error);
+    }
   };
 
   return (
@@ -778,6 +898,178 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
+      {user?.role === "pharmacist" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pending Prescriptions */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                <ClipboardList className="h-5 w-5 mr-2 text-orange-600" />
+                Pending Prescriptions
+              </h2>
+              <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                {prescriptions.filter((p) => p.status === "pending").length}
+              </span>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+              </div>
+            ) : prescriptions.filter((p) => p.status === "pending").length >
+              0 ? (
+              <div className="space-y-4">
+                {prescriptions
+                  .filter((p) => p.status === "pending")
+                  .map((prescription) => (
+                    <div
+                      key={prescription.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-orange-100 p-2 rounded-lg">
+                          <Pill className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {prescription.medicine_name}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {prescription.patients?.first_name}{" "}
+                            {prescription.patients?.last_name}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {prescription.dosage} · {prescription.frequency} ·{" "}
+                            {prescription.duration}
+                          </p>
+                          {prescription.instructions && (
+                            <p className="text-sm text-gray-700 mt-1">
+                              Instructions: {prescription.instructions}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span
+                          className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${getPrescriptionStatusColor(
+                            prescription.status
+                          )}`}
+                        >
+                          {prescription.status}
+                        </span>
+                        <button
+                          onClick={() =>
+                            updatePrescriptionStatus(
+                              prescription.id,
+                              "processing"
+                            )
+                          }
+                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                        >
+                          Process
+                        </button>
+                        <Link
+                          to={`/prescriptions/${prescription.id}`}
+                          className="px-3 py-1 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700"
+                        >
+                          View Details
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No pending prescriptions</p>
+              </div>
+            )}
+          </div>
+
+          {/* Processing Prescriptions */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                <Package className="h-5 w-5 mr-2 text-blue-600" />
+                Processing Prescriptions
+              </h2>
+              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                {prescriptions.filter((p) => p.status === "processing").length}
+              </span>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : prescriptions.filter((p) => p.status === "processing").length >
+              0 ? (
+              <div className="space-y-4">
+                {prescriptions
+                  .filter((p) => p.status === "processing")
+                  .map((prescription) => (
+                    <div
+                      key={prescription.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-blue-100 p-2 rounded-lg">
+                          <Package className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {prescription.medicine_name}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {prescription.patients?.first_name}{" "}
+                            {prescription.patients?.last_name}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {prescription.dosage} · {prescription.frequency} ·{" "}
+                            {prescription.duration}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Prescribed by:{" "}
+                            {prescription.medical_records?.doctors?.name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span
+                          className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${getPrescriptionStatusColor(
+                            prescription.status
+                          )}`}
+                        >
+                          {prescription.status}
+                        </span>
+                        <button
+                          onClick={() =>
+                            updatePrescriptionStatus(prescription.id, "ready")
+                          }
+                          className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+                        >
+                          Mark Ready
+                        </button>
+                        <Link
+                          to={`/prescriptions/${prescription.id}`}
+                          className="px-3 py-1 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700"
+                        >
+                          View Details
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No prescriptions in processing</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -866,6 +1158,35 @@ const Dashboard: React.FC = () => {
                 <Activity className="h-6 w-6 text-gray-600 mb-2" />
                 <span className="text-sm font-medium text-gray-700">
                   Patient Lookup
+                </span>
+              </button>
+            </>
+          )}
+
+          {user?.role === "pharmacist" && (
+            <>
+              <button className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <ClipboardList className="h-6 w-6 text-blue-600 mb-2" />
+                <span className="text-sm font-medium text-blue-700">
+                  View All Prescriptions
+                </span>
+              </button>
+              <button className="flex flex-col items-center justify-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                <Package className="h-6 w-6 text-green-600 mb-2" />
+                <span className="text-sm font-medium text-green-700">
+                  Inventory Check
+                </span>
+              </button>
+              <button className="flex flex-col items-center justify-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+                <AlertTriangle className="h-6 w-6 text-orange-600 mb-2" />
+                <span className="text-sm font-medium text-orange-700">
+                  Low Stock Alert
+                </span>
+              </button>
+              <button className="flex flex-col items-center justify-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                <Truck className="h-6 w-6 text-purple-600 mb-2" />
+                <span className="text-sm font-medium text-purple-700">
+                  Order Supplies
                 </span>
               </button>
             </>

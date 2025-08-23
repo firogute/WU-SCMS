@@ -23,6 +23,8 @@ import LaboratoryTestDetail from "./components/Laboratory/tests/LaboratoryTestDe
 import DoctorLabResultsPage from "./pages/doctor/DoctorLabResultsPage";
 import LabTestDetailPage from "./pages/doctor/LabTestDetailPage";
 import StaffDetail from "./components/Staff/StaffDetail";
+import Prescriptions from "./components/Prescriptions/Prescriptions";
+import PrescriptionDetail from "./components/Prescriptions/PrescriptionDetail";
 
 const ProtectedRoute: React.FC<{
   children: React.ReactNode;
@@ -123,6 +125,8 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route path="" element={<Navigate to="dashboard" replace />} />
+        <Route path="prescriptions" element={<Prescriptions />} />
+        <Route path="prescriptions/:id" element={<PrescriptionDetail />} />
       </Route>
     </Routes>
   );

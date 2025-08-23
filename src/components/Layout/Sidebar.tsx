@@ -11,6 +11,7 @@ import {
   UserCheck,
   Activity,
   TestTube,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -53,6 +54,11 @@ const Sidebar: React.FC = () => {
       case "pharmacist":
         return [
           ...baseItems,
+          {
+            icon: ClipboardList,
+            label: "Prescriptions",
+            path: "/prescriptions",
+          },
           { icon: Pill, label: "Pharmacy", path: "/pharmacy" },
           { icon: Users, label: "Patients", path: "/patients" },
           { icon: FileText, label: "Reports", path: "/reports" },

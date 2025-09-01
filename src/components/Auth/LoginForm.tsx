@@ -22,6 +22,14 @@ const containerStyle:React.CSSProperties={
    alignItems: 'center',
 };
 
+const glassFormStyle: React.CSSProperties = {
+  backgroundColor: 'rgba(255, 255, 255, 0.100)',  // White with 15% opacity
+  backdropFilter: 'blur(5px)', 
+  borderRadius: '15px', 
+  border: '1px solid rgba(255, 255, 255, 0.2)', 
+  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)', 
+  padding: '40px', width: '100%', maxWidth: '448px',
+};
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
 
@@ -105,12 +113,13 @@ const LoginForm: React.FC = () => {
 
   return (
     
-    //<div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    
     <div style={containerStyle}>
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-md w-full space-y-8"
+       style={glassFormStyle}>
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-lg flex items-center justify-center shadow-lg">
+            <div className="w-22 h-22 rounded-lg flex items-center justify-center shadow-lg">
               <img src="logo.png" alt="" className="text-white" />
             </div>
           </div>
@@ -122,7 +131,7 @@ const LoginForm: React.FC = () => {
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className=" ">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-center space-x-3">
@@ -185,7 +194,7 @@ const LoginForm: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+              className="w-full bg-blue-900 text-white py-3 px-4 rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
               {isLoading ? "Signing in..." : "Sign In"}
             </button>
@@ -197,7 +206,7 @@ const LoginForm: React.FC = () => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
+                <span className="px-2 bg-blue-100 text-gray-800">
                   Demo Credentials
                 </span>
               </div>

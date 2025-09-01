@@ -356,7 +356,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
+    <div className="space-y-6 p-6 bg-blue-50 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -532,7 +532,7 @@ const Dashboard: React.FC = () => {
       )}
 
       {user?.role === "admin" && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center">
               <AlertTriangle className="h-5 w-5 mr-2 text-red-600" />
@@ -624,7 +624,7 @@ const Dashboard: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button className="text-blue-600 hover:text-blue-900">
+                        <button className="text-blue-800 hover:text-blue-500">
                           Reorder
                         </button>
                       </td>
@@ -879,7 +879,7 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <button className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
+                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-green-700">
                       Mark Complete
                     </button>
                     <button className="p-1 hover:bg-gray-200 rounded">
@@ -964,13 +964,13 @@ const Dashboard: React.FC = () => {
                               "processing"
                             )
                           }
-                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                          className="px-3 py-1 bg-blue-800 text-white text-sm rounded-lg hover:bg-blue-500"
                         >
                           Process
                         </button>
                         <Link
                           to={`/prescriptions/${prescription.id}`}
-                          className="px-3 py-1 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700"
+                          className="px-3 py-1 bg-blue-800 text-white text-sm rounded-lg hover:bg-blue-500"
                         >
                           View Details
                         </Link>

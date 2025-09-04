@@ -14,7 +14,18 @@ const LabTestsTab = ({ appointmentId, labTests, setLabTests, onAddTest }) => {
     try {
       const { data, error } = await supabase
         .from("lab_tests")
-        .select("*")
+        .select(
+          `
+    id,
+    test_name,
+    status,
+    notes,
+    results,
+    created_at,
+    assigned_to,
+    users:assigned_to (id, name, email)
+  `
+        )
         .eq("appointment_id", appointmentId);
 
       if (error) throw error;
@@ -116,7 +127,7 @@ const LabTestsTab = ({ appointmentId, labTests, setLabTests, onAddTest }) => {
       title: "Assigned To",
       dataIndex: "assigned_to_user",
       key: "assigned_to",
-      render: (user) => user?.name || "Unassigned",
+      render: (_, record) => record.users?.name || "Unassigned",
     },
     {
       title: "Notes",

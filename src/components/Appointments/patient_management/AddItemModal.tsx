@@ -1,6 +1,5 @@
 import React from "react";
-import { Modal, Form, Input, Select } from "antd";
-import { Plus } from "lucide-react";
+import { Modal, Form, Input, Select, Checkbox } from "antd";
 import Button from "../../UI/Button";
 
 const { Option } = Select;
@@ -33,12 +32,55 @@ const AddItemModal = ({
         {activeModal.type === "lab" && (
           <>
             <Form.Item
-              name="test_name"
-              label="Test Name"
-              rules={[{ required: true }]}
+              name="tests"
+              label="Select Tests"
+              rules={[
+                { required: true, message: "Please select at least one test" },
+              ]}
             >
-              <Input placeholder="e.g., Complete Blood Count" />
+              <Checkbox.Group className="w-full">
+                <div className="grid grid-cols-2 gap-3">
+                  <Checkbox value="cbc">Complete Blood Count (CBC)</Checkbox>
+                  <Checkbox value="urinalysis">Urinalysis</Checkbox>
+                  <Checkbox value="blood_glucose">Blood Glucose</Checkbox>
+                  <Checkbox value="lipid_profile">Lipid Profile</Checkbox>
+                  <Checkbox value="liver_function">
+                    Liver Function Tests
+                  </Checkbox>
+                  <Checkbox value="renal_function">
+                    Renal Function Tests
+                  </Checkbox>
+                  <Checkbox value="thyroid">Thyroid Panel</Checkbox>
+                  <Checkbox value="vitamin_d">Vitamin D</Checkbox>
+                  <Checkbox value="other">Other (specify below)</Checkbox>
+                </div>
+              </Checkbox.Group>
             </Form.Item>
+
+            <Form.Item
+              noStyle
+              shouldUpdate={(prevValues, currentValues) =>
+                prevValues.tests !== currentValues.tests
+              }
+            >
+              {({ getFieldValue }) =>
+                getFieldValue("tests")?.includes("other") ? (
+                  <Form.Item
+                    name="other_test"
+                    label="Other Test Name"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Please specify the test name",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Enter test name" />
+                  </Form.Item>
+                ) : null
+              }
+            </Form.Item>
+
             <Form.Item
               name="assigned_to"
               label="Assign To"
@@ -54,6 +96,7 @@ const AddItemModal = ({
                   ))}
               </Select>
             </Form.Item>
+
             <Form.Item name="notes" label="Notes">
               <TextArea rows={3} placeholder="Additional instructions..." />
             </Form.Item>
@@ -89,12 +132,66 @@ const AddItemModal = ({
         {activeModal.type === "prescription" && (
           <>
             <Form.Item
-              name="medication"
-              label="Medication"
-              rules={[{ required: true }]}
+              name="medicines"
+              label="Select Medicines"
+              rules={[
+                {
+                  required: true,
+                  message: "Please select at least one medicine",
+                },
+              ]}
             >
-              <Input placeholder="e.g., Amoxicillin" />
+              <Checkbox.Group className="w-full">
+                <div className="grid grid-cols-2 gap-3">
+                  <Checkbox value="amoxicillin">
+                    Amoxicillin (Antibiotic)
+                  </Checkbox>
+                  <Checkbox value="paracetamol">
+                    Paracetamol (Pain Relief)
+                  </Checkbox>
+                  <Checkbox value="ibuprofen">
+                    Ibuprofen (Anti-inflammatory)
+                  </Checkbox>
+                  <Checkbox value="omeprazole">
+                    Omeprazole (Acid Reducer)
+                  </Checkbox>
+                  <Checkbox value="atorvastatin">
+                    Atorvastatin (Cholesterol)
+                  </Checkbox>
+                  <Checkbox value="metformin">Metformin (Diabetes)</Checkbox>
+                  <Checkbox value="amlodipine">
+                    Amlodipine (Blood Pressure)
+                  </Checkbox>
+                  <Checkbox value="salbutamol">Salbutamol (Asthma)</Checkbox>
+                  <Checkbox value="other">Other (specify below)</Checkbox>
+                </div>
+              </Checkbox.Group>
             </Form.Item>
+
+            <Form.Item
+              noStyle
+              shouldUpdate={(prevValues, currentValues) =>
+                prevValues.medicines !== currentValues.medicines
+              }
+            >
+              {({ getFieldValue }) =>
+                getFieldValue("medicines")?.includes("other") ? (
+                  <Form.Item
+                    name="other_medicine"
+                    label="Other Medicine Name"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Please specify the medicine name",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Enter medicine name" />
+                  </Form.Item>
+                ) : null
+              }
+            </Form.Item>
+
             <Form.Item
               name="dosage"
               label="Dosage"
@@ -102,13 +199,22 @@ const AddItemModal = ({
             >
               <Input placeholder="e.g., 500mg" />
             </Form.Item>
+
             <Form.Item
               name="frequency"
               label="Frequency"
               rules={[{ required: true }]}
             >
-              <Input placeholder="e.g., Three times daily" />
+              <Select placeholder="Select frequency">
+                <Option value="once_daily">Once daily</Option>
+                <Option value="twice_daily">Twice daily</Option>
+                <Option value="three_times_daily">Three times daily</Option>
+                <Option value="four_times_daily">Four times daily</Option>
+                <Option value="as_needed">As needed</Option>
+                <Option value="other">Other (specify in instructions)</Option>
+              </Select>
             </Form.Item>
+
             <Form.Item
               name="duration"
               label="Duration"
@@ -116,6 +222,7 @@ const AddItemModal = ({
             >
               <Input placeholder="e.g., 10 days" />
             </Form.Item>
+
             <Form.Item name="instructions" label="Instructions">
               <TextArea rows={2} placeholder="e.g., Take with food" />
             </Form.Item>

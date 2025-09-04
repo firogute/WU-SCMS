@@ -139,9 +139,9 @@ const Dashboard: React.FC = () => {
               .from("appointments")
               .select(
                 `
-                id, patient_id, doctor_id, date, time, type, status, symptoms, notes,
-                patients (first_name, last_name)
-              `
+      id, patient_id, doctor_id, date, time, type, status, symptoms, notes,
+      patients (first_name, last_name)
+    `
               )
               .eq("doctor_id", user.id)
               .eq("date", today)
@@ -150,25 +150,22 @@ const Dashboard: React.FC = () => {
 
             setAppointments(appointmentsData || []);
 
-            // Fetch lab tests assigned by this doctor
+            // Fetch completed lab tests for non-completed appointments from today
             const { data: labTestsData } = await supabase
               .from("lab_tests")
               .select(
                 `
                 id, test_name, status, notes, results,
-                appointments (date, time, doctor_id, patients (first_name, last_name))
+                appointments!inner (date, time, doctor_id, status, patients (first_name, last_name))
               `
               )
               .eq("status", "completed")
-              .order("created_at", { ascending: true });
+              .eq("appointments.doctor_id", user.id)
+              .eq("appointments.date", today)
+              .neq("appointments.status", "completed");
 
-            // Filter on the client side since we can't filter by nested field directly
-            const filteredLabTests =
-              labTestsData?.filter(
-                (test) => test.appointments?.doctor_id === user.id
-              ) || [];
-
-            setLabTests(filteredLabTests);
+            setLabTests(labTestsData || []);
+            ss;
             break;
 
           case "admin":

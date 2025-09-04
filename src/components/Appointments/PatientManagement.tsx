@@ -189,15 +189,20 @@ const PatientMedicalPage = () => {
   const handleModalSubmit = async (values) => {
     try {
       if (activeModal.type === "lab") {
-        const { error } = await supabase.from("lab_tests").insert({
-          appointment_id: appointmentId,
-          patient_id: patientId,
-          test_name: values.test_name,
-          status: "pending",
-          assigned_to: values.assigned_to,
-          notes: values.notes,
-          created_at: new Date().toISOString(),
-        });
+        const { data, error } = await supabase
+          .from("lab_tests")
+          .insert({
+            appointment_id: appointmentId,
+            patient_id: patientId,
+            test_name: values.test_name,
+            status: "pending",
+            assigned_to: values.assigned_to,
+            notes: values.notes,
+            created_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
         if (error) throw error;
         message.success("Lab test assigned successfully");
 
@@ -257,7 +262,7 @@ const PatientMedicalPage = () => {
         const { error: prescriptionError } = await supabase
           .from("prescriptions")
           .insert({
-            consultation_id: consultationId,
+            appointment_id: consultationId,
             medicine_id: medicineData?.id || null,
             medicine_name: values.medication,
             dosage: values.dosage,

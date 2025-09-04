@@ -82,7 +82,7 @@ const Sidebar: React.FC = () => {
   const navItems = getNavItems();
 
   return (
-    <aside className="bg-white shadow-lg w-64 min-h-screen flex flex-col">
+    <aside className="bg-blue-100 shadow-lg w-64 min-h-screen flex flex-col">
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center">

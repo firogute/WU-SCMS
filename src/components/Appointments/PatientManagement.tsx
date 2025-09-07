@@ -185,16 +185,23 @@ const PatientMedicalPage = () => {
       message.error("Failed to complete appointment");
     }
   };
-
   const handleModalSubmit = async (values) => {
     try {
       if (activeModal.type === "lab") {
+        // build tests string
+        let selectedTests = values.tests || [];
+        if (selectedTests.includes("other") && values.other_test) {
+          selectedTests = selectedTests.filter((t) => t !== "other");
+          selectedTests.push(values.other_test);
+        }
+        const testString = selectedTests.join(", ");
+
         const { data, error } = await supabase
           .from("lab_tests")
           .insert({
             appointment_id: appointmentId,
             patient_id: patientId,
-            test_name: values.test_name,
+            test_name: testString, // 👈 save as "CBC, Urinalysis, Other Test"
             status: "pending",
             assigned_to: values.assigned_to,
             notes: values.notes,
@@ -205,7 +212,6 @@ const PatientMedicalPage = () => {
 
         if (error) throw error;
         message.success("Lab test assigned successfully");
-
         setLabTests((prev) => [...prev, data]);
       } else if (activeModal.type === "nurse") {
         const { error } = await supabase.from("nurse_tasks").insert({
@@ -220,7 +226,15 @@ const PatientMedicalPage = () => {
         if (error) throw error;
         message.success("Nurse task assigned successfully");
       } else if (activeModal.type === "prescription") {
-        // Check if medical record exists
+        // build medicines string
+        let selectedMeds = values.medicines || [];
+        if (selectedMeds.includes("other") && values.other_medicine) {
+          selectedMeds = selectedMeds.filter((m) => m !== "other");
+          selectedMeds.push(values.other_medicine);
+        }
+        const medsString = selectedMeds.join(", ");
+
+        // check if medical record exists
         const { data: existingMedicalRecord, error: checkError } =
           await supabase
             .from("medical_records")
@@ -252,19 +266,11 @@ const PatientMedicalPage = () => {
           message.info("Created new medical record for this appointment");
         }
 
-        // Get medicine ID
-        const { data: medicineData } = await supabase
-          .from("medicines")
-          .select("id")
-          .ilike("name", `%${values.medication}%`)
-          .single();
-
         const { error: prescriptionError } = await supabase
           .from("prescriptions")
           .insert({
             appointment_id: consultationId,
-            medicine_id: medicineData?.id || null,
-            medicine_name: values.medication,
+            medicine_name: medsString, // 👈 save as "Paracetamol, Ibuprofen, Other Med"
             dosage: values.dosage,
             frequency: values.frequency,
             duration: values.duration,
@@ -275,7 +281,7 @@ const PatientMedicalPage = () => {
         message.success("Prescription added successfully");
       }
 
-      // fetchPatientData();
+      // reset
       setActiveModal({ type: null, data: null });
       form.resetFields();
     } catch (error) {

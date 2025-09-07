@@ -40,14 +40,16 @@ const AddItemModal = ({
             >
               <Checkbox.Group className="w-full">
                 <div className="grid grid-cols-2 gap-3">
-                  <Checkbox value="cbc">Complete Blood Count (CBC)</Checkbox>
-                  <Checkbox value="urinalysis">Urinalysis</Checkbox>
-                  <Checkbox value="blood_glucose">Blood Glucose</Checkbox>
-                  <Checkbox value="lipid_profile">Lipid Profile</Checkbox>
-                  <Checkbox value="liver_function">
+                  <Checkbox value="Complete Blood Count (CBC)">
+                    Complete Blood Count (CBC)
+                  </Checkbox>
+                  <Checkbox value="Urinalysis">Urinalysis</Checkbox>
+                  <Checkbox value="Blood Glucose">Blood Glucose</Checkbox>
+                  <Checkbox value="Lipid Profile">Lipid Profile</Checkbox>
+                  <Checkbox value="Liver Function Tests">
                     Liver Function Tests
                   </Checkbox>
-                  <Checkbox value="renal_function">
+                  <Checkbox value="Renal Function Tests">
                     Renal Function Tests
                   </Checkbox>
                   <Checkbox value="thyroid">Thyroid Panel</Checkbox>

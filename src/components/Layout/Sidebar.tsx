@@ -12,11 +12,13 @@ import {
   Activity,
   TestTube,
   ClipboardList,
+  LogOut,
+  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
 const Sidebar: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
 
   const getNavItems = () => {
@@ -82,21 +84,23 @@ const Sidebar: React.FC = () => {
   const navItems = getNavItems();
 
   return (
-    <aside className="bg-blue-100 shadow-lg w-64 min-h-screen flex flex-col">
-      <div className="p-6 border-b border-gray-200">
+    <aside className="bg-gradient-to-b from-blue-900 to-indigo-900 text-white w-64 min-h-screen flex flex-col shadow-xl">
+      {/* Logo Section */}
+      <div className="p-6 border-b border-indigo-700">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center">
+          <div className="w-11 h-11 rounded-lg flex items-center justify-center shadow-md">
             <img src="logo.png" alt="" className="text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-gray-900 text-lg">Student Clinic</h1>
-            <p className="text-xs text-gray-500">Wollega University</p>
+            <h1 className="font-bold text-white text-lg">Clinic</h1>
+            <p className="text-xs text-indigo-200">Wollega University</p>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 py-6">
-        <ul className="space-y-1 px-4">
+      {/* Navigation */}
+      <nav className="flex-1 py-6 px-4">
+        <ul className="space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -105,14 +109,23 @@ const Sidebar: React.FC = () => {
               <li key={item.path}>
                 <NavLink
                   to={item.path}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                     isActive
-                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-white/10 text-white shadow-lg"
+                      : "text-indigo-200 hover:bg-white/5 hover:text-white"
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon
+                    className={`w-5 h-5 ${
+                      isActive
+                        ? "text-white"
+                        : "text-indigo-300 group-hover:text-white"
+                    }`}
+                  />
                   <span className="font-medium">{item.label}</span>
+                  {isActive && (
+                    <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                  )}
                 </NavLink>
               </li>
             );
@@ -120,22 +133,40 @@ const Sidebar: React.FC = () => {
         </ul>
       </nav>
 
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center space-x-3 px-4 py-2">
-          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-            <span className="text-sm font-medium text-gray-700">
-              {user?.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
-            </span>
+      {/* User Profile & Actions */}
+      <div className="p-4 border-t border-indigo-700">
+        <div className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-white/5 mb-3">
+          <div className="relative">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center shadow-md">
+              <span className="text-white text-sm font-medium">
+                {user?.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
+              </span>
+            </div>
+            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-indigo-900"></div>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
+            <p className="text-sm font-medium text-white truncate">
               {user?.name}
             </p>
-            <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+            <p className="text-xs text-indigo-300 capitalize">{user?.role}</p>
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={logout}
+            className="flex items-center justify-center space-x-1 px-3 py-2 text-indigo-200 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-xs"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </button>
+          <button className="flex items-center justify-center space-x-1 px-3 py-2 text-indigo-200 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-xs">
+            <HelpCircle className="w-4 h-4" />
+            <span>Help</span>
+          </button>
         </div>
       </div>
     </aside>

@@ -344,52 +344,6 @@ const ReportsModule = () => {
 
       setPharmacyData(augmentedData);
       setPharmacyTotal(count || 0);
-    } else if (report === "financial") {
-      const { data: appts } = await supabase
-        .from("appointments")
-        .select("id")
-        .gte("date", start)
-        .lte("date", end);
-      const apptIds = appts?.map((a) => a.id) || [];
-
-      const { data: medRecs } = await supabase
-        .from("medical_records")
-        .select("id, appointment_id (doctor_id (department))")
-        .in("appointment_id", apptIds);
-      const medRecIds = medRecs?.map((m) => m.id) || [];
-
-      let query = supabase
-        .from("prescriptions")
-        .select(
-          "*, medicine_id (name, price), appointment_id (appointment_id (date, doctor_id (name, department)))",
-          { count: "exact" }
-        )
-        .in("appointment_id", medRecIds);
-
-      if (financialFilters.medicineName) {
-        query = query.ilike(
-          "medicine_id.name",
-          `%${financialFilters.medicineName}%`
-        );
-      }
-      if (financialFilters.department) {
-        query = query.eq(
-          "appointment_id.appointment_id.doctor_id.department",
-          financialFilters.department
-        );
-      }
-
-      query = query.order(financialSortColumn, {
-        ascending: financialSortDirection === "asc",
-      });
-      query = query.range(
-        (financialPage - 1) * financialLimit,
-        financialPage * financialLimit - 1
-      );
-
-      const { data, count } = await query;
-      setFinancialData(data || []);
-      setFinancialTotal(count || 0);
     }
   };
 
@@ -397,7 +351,6 @@ const ReportsModule = () => {
     if (report === "patients") setPatientsPage(1);
     if (report === "appointments") setAppointmentsPage(1);
     if (report === "pharmacy") setPharmacyPage(1);
-    if (report === "financial") setFinancialPage(1);
     fetchReportData(report);
   };
 
@@ -1322,162 +1275,6 @@ const ReportsModule = () => {
     </div>
   );
 
-  const renderFinancialReports = () => (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Financial Reports
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Medicine Name"
-          value={financialFilters.medicineName}
-          onChange={(e) =>
-            setFinancialFilters({
-              ...financialFilters,
-              medicineName: e.target.value,
-            })
-          }
-          className="px-3 py-2 border border-gray-300 rounded-lg"
-        />
-        <select
-          value={financialFilters.department}
-          onChange={(e) =>
-            setFinancialFilters({
-              ...financialFilters,
-              department: e.target.value,
-            })
-          }
-          className="px-3 py-2 border border-gray-300 rounded-lg"
-        >
-          <option value="">All Departments</option>
-          {departments.map((dept) => (
-            <option key={dept} value={dept}>
-              {dept}
-            </option>
-          ))}
-        </select>
-        <Button
-          onClick={() => handleApplyFilters("financial")}
-          className="col-span-1 md:col-span-2"
-        >
-          <Filter className="w-4 h-4 mr-2" />
-          Apply Filters
-        </Button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                onClick={() => handleSort("financial", "id")}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-              >
-                ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Medicine Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Dosage
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Frequency
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Duration
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Instructions
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Price
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Department
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Doctor Name
-              </th>
-              <th
-                onClick={() => handleSort("financial", "status")}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-              >
-                Status
-              </th>
-              <th
-                onClick={() => handleSort("financial", "created_at")}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-              >
-                Created At
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {financialData.map((fin) => (
-              <tr key={fin.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.id}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.medicine_id?.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.dosage}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.frequency}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.duration}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {fin.instructions}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  ${fin.medicine_id?.price?.toFixed(2)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.appointment_id?.appointment_id?.date}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.appointment_id?.appointment_id?.doctor_id?.department}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.appointment_id?.appointment_id?.doctor_id?.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.status}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fin.created_at}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 cursor-pointer">
-                  <button onClick={() => handleExportPrescriptionPDF(fin.id)}>
-                    Export Prescription
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {renderPagination(
-        "financial",
-        financialPage,
-        setFinancialPage,
-        financialTotal,
-        financialLimit
-      )}
-    </div>
-  );
-
   const renderReportContent = () => {
     switch (selectedReport) {
       case "overview":
@@ -1488,8 +1285,6 @@ const ReportsModule = () => {
         return renderAppointmentReports();
       case "pharmacy":
         return renderPharmacyReports();
-      case "financial":
-        return renderFinancialReports();
       default:
         return renderOverviewReport();
     }
@@ -1500,7 +1295,6 @@ const ReportsModule = () => {
     { id: "patients", name: "Patient Reports", icon: Users },
     { id: "appointments", name: "Appointment Reports", icon: Calendar },
     { id: "pharmacy", name: "Pharmacy Reports", icon: Pill },
-    { id: "financial", name: "Financial Reports", icon: DollarSign },
   ];
 
   return (

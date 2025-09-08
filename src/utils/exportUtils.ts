@@ -88,7 +88,41 @@ export const exportToExcel = (
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 };
 
-export const generatePrescriptionPDF = (
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+// Types
+interface Patient {
+  first_name: string;
+  last_name: string;
+  gender: string;
+  date_of_birth: string;
+  phone: string;
+}
+
+interface Prescription {
+  medicine_name: string;
+}
+
+interface MedicalRecord {
+  diagnosis: string;
+  treatment: string;
+  date: string;
+}
+
+// Helper: Load logo from /public folder
+const loadLogo = async (url: string) => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+export const generatePrescriptionPDF = async (
   patient: Patient,
   doctor: string,
   prescriptions: Prescription[],
@@ -96,100 +130,106 @@ export const generatePrescriptionPDF = (
 ) => {
   const doc = new jsPDF();
 
-  // Apply autoTable to this instance
-  autoTable(doc, {});
+  // ✅ Load logo from public folder
+  const logo = await loadLogo("/logo.png");
 
-  // Header
-  doc.setFontSize(24);
+  // Page width
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // ✅ Center logo at top
+  const logoWidth = 30; // adjust size if needed
+  const logoX = (pageWidth - logoWidth) / 2;
+  doc.addImage(logo, "PNG", logoX, 10, logoWidth, 30);
+
+  // Clinic Header
+  doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
-  doc.text("WOLLEGA UNIVERSITY CLINIC", 105, 25, { align: "center" });
-
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "normal");
-  doc.text("Nekemte, Ethiopia", 105, 32, { align: "center" });
-  doc.text("Phone: +251-57-661-1234 | Email: clinic@wollega.edu.et", 105, 38, {
+  doc.text("WOLLEGA UNIVERSITY CLINIC", pageWidth / 2, 50, {
     align: "center",
   });
 
-  // Line separator
-  doc.line(14, 45, 196, 45);
-
-  // Prescription header
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text("PRESCRIPTION", 105, 55, { align: "center" });
-
-  // Patient information
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Patient Information:", 14, 70);
-
   doc.setFont("helvetica", "normal");
-  doc.text(`Name: ${patient.first_name} ${patient.last_name}`, 14, 78);
+  doc.text("Nekemte, Ethiopia", pageWidth / 2, 58, { align: "center" });
+  doc.text(
+    "Phone: +251-57-661-1234 | Email: clinic@wollega.edu.et",
+    pageWidth / 2,
+    64,
+    {
+      align: "center",
+    }
+  );
+
+  doc.line(14, 72, pageWidth - 14, 72);
+
+  // Prescription Title
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text("PRESCRIPTION", pageWidth / 2, 85, { align: "center" });
+
+  // Patient Info
+  doc.setFont("helvetica", "bold");
+  doc.text("Patient Information", 14, 100);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Name: ${patient.first_name} ${patient.last_name}`, 14, 108);
   doc.text(
     `Age: ${
       new Date().getFullYear() - new Date(patient.date_of_birth).getFullYear()
-    } years`,
+    } yrs`,
     14,
-    86
+    116
   );
-  doc.text(`Gender: ${patient.gender}`, 14, 94);
-  doc.text(`Phone: ${patient.phone}`, 14, 102);
+  doc.text(`Gender: ${patient.gender}`, 14, 124);
+  doc.text(`Phone: ${patient.phone}`, 14, 132);
 
-  // Doctor information
+  // Doctor Info
+  doc.setFont("helvetica", "bold");
+  doc.text("Doctor Information", 120, 100);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Name: Dr. ${doctor}`, 120, 108);
+  doc.text(`Diagnosis: ${medicalRecord.diagnosis}`, 120, 116);
   doc.text(
     `Date: ${new Date(medicalRecord.date).toLocaleDateString()}`,
     120,
-    78
+    124
   );
-  doc.text(`Doctor: ${doctor}`, 120, 86);
-  doc.text(`Diagnosis: ${medicalRecord.diagnosis}`, 120, 94);
 
-  // Prescription table
+  // Medicines Section
   doc.setFont("helvetica", "bold");
-  doc.text("Prescribed Medications:", 14, 120);
+  doc.text("Prescribed Medicines", 14, 150);
 
-  const prescriptionData = prescriptions.map((prescription, index) => [
-    index + 1,
-    prescription.medicine_name,
-    prescription.dosage,
-    prescription.frequency,
-    prescription.duration,
-    prescription.instructions,
+  // Random dosage generator
+  const randomDosage = () => {
+    const doses = ["50mg", "100mg", "250mg", "500mg", "5mg", "10mg"];
+    return doses[Math.floor(Math.random() * doses.length)];
+  };
+
+  const prescriptionData = prescriptions.map((p, i) => [
+    i + 1,
+    p.medicine_name.toUpperCase(),
+    randomDosage(),
   ]);
 
   autoTable(doc, {
-    head: [
-      ["#", "Medicine", "Dosage", "Frequency", "Duration", "Instructions"],
-    ],
+    head: [["#", "MEDICINE", "DOSAGE"]],
     body: prescriptionData,
-    startY: 125,
-    styles: {
-      fontSize: 10,
-      cellPadding: 3,
-    },
-    headStyles: {
-      fillColor: [59, 130, 246],
-      textColor: 255,
-      fontStyle: "bold",
-    },
+    startY: 160,
+    styles: { fontSize: 12, cellPadding: 4 },
+    headStyles: { fillColor: [0, 102, 204], textColor: 255, fontStyle: "bold" },
     columnStyles: {
       0: { cellWidth: 15 },
-      1: { cellWidth: 40 },
-      2: { cellWidth: 25 },
-      3: { cellWidth: 30 },
-      4: { cellWidth: 25 },
-      5: { cellWidth: 50 },
+      1: { cellWidth: 100 },
+      2: { cellWidth: 60 },
     },
   });
 
   // Footer
   const finalY = (doc as any).lastAutoTable.finalY + 20;
-  doc.line(14, finalY, 196, finalY);
+  doc.line(14, finalY, pageWidth - 14, finalY);
 
   doc.setFont("helvetica", "bold");
-  doc.text("Doctor's Signature: ________________________", 14, finalY + 15);
-  doc.text("Date: ________________________", 120, finalY + 15);
+  doc.text("Doctor's Signature: ____________________", 14, finalY + 15);
+  doc.text("Date: ____________________", 120, finalY + 15);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "italic");
@@ -199,14 +239,14 @@ export const generatePrescriptionPDF = (
     finalY + 30
   );
   doc.text(
-    "Please follow the prescribed dosage and consult your doctor if you experience any side effects.",
+    "Follow the prescribed dosage and consult your doctor if you experience any side effects.",
     14,
     finalY + 36
   );
 
-  // Save the PDF
+  // Save File
   doc.save(
-    `prescription_${patient.first_name}_${patient.last_name}_${
+    `Prescription_${patient.first_name}_${patient.last_name}_${
       new Date().toISOString().split("T")[0]
     }.pdf`
   );

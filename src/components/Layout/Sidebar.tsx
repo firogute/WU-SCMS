@@ -92,7 +92,7 @@ const Sidebar: React.FC = () => {
             <img src="logo.png" alt="" className="text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-white text-lg">Clinic</h1>
+            <h1 className="font-bold text-white text-lg">Student Clinic</h1>
             <p className="text-xs text-indigo-200">Wollega University</p>
           </div>
         </div>

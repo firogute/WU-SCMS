@@ -25,6 +25,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 interface Appointment {
   id: string;
@@ -108,6 +109,7 @@ interface Prescription {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [labTests, setLabTests] = useState<LabTest[]>([]);
@@ -702,7 +704,12 @@ const Dashboard: React.FC = () => {
                     <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
                       View Details
                     </button>
-                    <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                    <button
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                      onClick={() => {
+                        navigate(`/laboratory/tests/${test.id}`);
+                      }}
+                    >
                       Upload Results
                     </button>
                   </div>

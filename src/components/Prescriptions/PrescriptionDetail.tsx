@@ -19,6 +19,7 @@ import { useReactToPrint } from "react-to-print";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { format } from "date-fns";
+import { generatePrescriptionPDF } from "../../utils/exportUtils";
 
 interface Prescription {
   id: string;
@@ -151,6 +152,30 @@ const PrescriptionDetail: React.FC = () => {
     }
   }, [id, user]);
 
+  const handleGeneratePDF = async () => {
+    if (!prescription) return;
+
+    const patient = prescription.medical_records.patients;
+    const doctor = prescription.medical_records.users.name;
+    const medicalRecord = {
+      diagnosis: prescription.medical_records.diagnosis,
+      treatment: prescription.medical_records.treatment,
+      date: prescription.created_at,
+    };
+
+    const prescriptions =
+      prescription.medicine_name?.split(",").map((med: string) => ({
+        medicine_name: med.trim(),
+      })) || [];
+
+    await generatePrescriptionPDF(
+      patient,
+      doctor,
+      prescriptions,
+      medicalRecord
+    );
+  };
+
   const updateStatus = async () => {
     if (!prescription || newStatus === prescription.status) return;
 
@@ -204,11 +229,11 @@ const PrescriptionDetail: React.FC = () => {
           </div>
           <div className="flex space-x-4">
             <button
-              onClick={handlePrint}
+              onClick={handleGeneratePDF}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <Printer className="h-4 w-4 mr-2" />
-              Print
+              Download PDF
             </button>
             <button className="p-2 hover:bg-gray-100 rounded">
               <MoreHorizontal className="h-5 w-5 text-gray-600" />
